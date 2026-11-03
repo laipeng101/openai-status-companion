@@ -8,6 +8,8 @@ const bundlePath = '/dist/openai-status-companion.user.js';
 const fixturePath = '/tests/fixtures/openai-official-summary.json';
 const fixtureText = await readFile(new URL(`.${fixturePath}`, root), 'utf8');
 const fixture = JSON.parse(fixtureText);
+const port = Number(process.env.PORT || 8765);
+if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be an integer from 1 to 65535');
 const jsonForScript = value => JSON.stringify(value).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
 const choice = (value, allowed, fallback) => allowed.includes(value) ? value : fallback;
 
@@ -18,6 +20,7 @@ function previewPage(params) {
     theme: choice(params.get('theme'), ['light','dark'], 'light'),
     scene: choice(params.get('scene'), ['healthy','incident','maintenance','failure','compat'], 'healthy'),
     collapsed: params.get('sidebar') === 'collapsed' || ['1','true'].includes(params.get('collapsed')),
+    peek: ['1','true'].includes(params.get('peek')),
     width: Math.max(180, Math.min(420, Number(params.get('width')) || (params.get('site') === 'leopard' ? 260 : 340))),
   };
   const options = (values, selected) => values.map(value => `<option${value===selected ? ' selected' : ''}>${value}</option>`).join('');
@@ -34,9 +37,14 @@ function previewPage(params) {
   .rail,.sidebar {position:fixed;inset:0 auto 0 0;background:var(--sidebar);border-right:1px solid var(--border);}
   .rail {width:52px;padding:18px 8px;display:grid;align-content:start;gap:20px;z-index:1;text-align:center;}
   .sidebar {width:var(--sidebar-width);padding:18px 16px;transition:width .18s,transform .18s;z-index:2;overflow:hidden;}
+  .sidebar-clip {position:fixed;inset:0 auto 0 0;width:var(--sidebar-width);overflow:visible;transition:width .18s;z-index:2;}
+  .site-chatgpt .sidebar {position:absolute;inset:0 auto 0 0;}
+  .site-chatgpt .sidebar-content {margin-left:36px;}
+  .site-chatgpt .rail {z-index:3;}
   .sidebar h2 {margin:0 0 28px;font-size:18px;white-space:nowrap}.sidebar p {color:var(--muted);white-space:nowrap}
   .sidebar nav {display:grid;gap:14px}.sidebar nav span {padding:8px;border-radius:7px;background:var(--surface);white-space:nowrap}
-  .site-chatgpt.collapsed .sidebar {width:52px;padding:18px 8px}.site-chatgpt.collapsed .sidebar-content {display:none}
+  .site-chatgpt.collapsed .sidebar-clip {width:52px;overflow:hidden;}
+  .site-chatgpt.collapsed.peek .sidebar-clip {overflow:visible;}
   .site-leopard.collapsed .sidebar {transform:translateX(-100%)}
   .layout {margin-left:var(--sidebar-width);min-height:100vh;display:flex;flex-direction:column;transition:margin-left .18s;}
   .collapsed .layout {margin-left:52px}.toolbar {padding:12px 18px;border-bottom:1px solid var(--border);background:var(--surface);z-index:3;}
@@ -47,13 +55,15 @@ function previewPage(params) {
   main h1 {font-size:26px;font-weight:550} main p {max-width:600px;color:var(--muted)}
   .composer {position:fixed;bottom:28px;left:calc(var(--sidebar-width) + (100vw - var(--sidebar-width)) * .5);transform:translateX(-50%);width:min(700px,calc(100vw - var(--sidebar-width) - 60px));min-height:70px;padding:20px 24px;text-align:left;border:1px solid var(--border);border-radius:26px;background:var(--surface);color:var(--muted);}
   .collapsed .composer {left:calc(52px + (100vw - 52px)*.5);width:min(700px,calc(100vw - 112px))}
-  @media(max-width:767px) {.layout {margin-left:52px}.sidebar {max-width:calc(100vw - 55px)}.toolbar {padding:10px}.toolbar form {gap:7px}.toolbar select {max-width:110px}.toolbar .note {font-size:11px}main {padding:20px 18px 130px}main h1 {font-size:20px}.composer,.collapsed .composer {left:calc(52px + (100vw - 52px)*.5);width:calc(100vw - 84px);bottom:70px;font-size:12px;padding:17px;min-height:60px}}
+  @media(max-width:767px) {.layout {margin-left:52px}.site-leopard .sidebar {max-width:calc(100vw - 55px)}.toolbar {padding:10px}.toolbar form {gap:7px}.toolbar select {max-width:110px}.toolbar .note {font-size:11px}main {padding:20px 18px 130px}main h1 {font-size:20px}.composer,.collapsed .composer {left:calc(52px + (100vw - 52px)*.5);width:calc(100vw - 84px);bottom:70px;font-size:12px;padding:17px;min-height:60px}}
 </style></head>
-<body class="site-${config.site}${config.collapsed?' collapsed':''}">
+<body class="site-${config.site}${config.collapsed?' collapsed':''}${config.peek?' peek':''}">
 <div class="rail" ${config.site==='leopard'?'id="stage-sidebar-tiny-bar"':''} aria-label="Collapsed navigation"><span>◉</span><span>＋</span><span>⌕</span></div>
+${config.site==='chatgpt'?'<div class="sidebar-clip" id="preview-sidebar-clip">':''}
 <aside class="sidebar" id="${config.site==='chatgpt'?'app-shell-sidebar':'stage-slideover-sidebar'}" data-testid="sidebar">
   <div class="sidebar-content"><h2>${config.site==='chatgpt'?'ChatGPT layout fixture':'Leopard-X layout fixture'}</h2><nav><span>＋ New chat</span><span>Projects</span><span>Example conversation</span><span>Another example</span></nav><p>Public synthetic layout only</p></div>
 </aside>
+${config.site==='chatgpt'?'</div>':''}
 <div class="layout"><header class="toolbar">
   <form id="preview-form" method="get">
     <label>Site <select name="site" aria-label="Preview site">${options(['chatgpt','leopard'],config.site)}</select></label>
@@ -64,6 +74,7 @@ function previewPage(params) {
     <button type="submit">Apply preview</button>
   </form>
   <div class="controls"><button id="toggle-sidebar" type="button">Toggle sidebar</button>
+    ${config.site==='chatgpt'?`<button id="peek-sidebar" type="button" aria-pressed="${config.peek}">Toggle collapsed peek</button>`:''}
     <label>Sidebar width <input id="sidebar-width" type="range" min="180" max="420" value="${config.width}"><output id="width-value">${config.width}</output></label>
     <label><input id="network-failure" type="checkbox"${config.scene==='failure'?' checked':''}>Simulate network failure</label>
     <span id="request-count" role="status">Status requests: 0</span>
@@ -114,7 +125,15 @@ function previewPage(params) {
   };
   document.getElementById('toggle-sidebar').addEventListener('click',()=>{
     const collapsed=document.body.classList.toggle('collapsed');
+    document.body.classList.remove('peek');
+    document.getElementById('peek-sidebar')?.setAttribute('aria-pressed','false');
     document.querySelector('input[name="sidebar"]').value=collapsed?'collapsed':'expanded';
+  });
+  document.getElementById('peek-sidebar')?.addEventListener('click',event=>{
+    document.body.classList.add('collapsed');
+    const peek=document.body.classList.toggle('peek');
+    event.currentTarget.setAttribute('aria-pressed',String(peek));
+    document.querySelector('input[name="sidebar"]').value='collapsed';
   });
   document.getElementById('sidebar-width').addEventListener('input',event=>{
     document.documentElement.style.setProperty('--sidebar-width',event.target.value+'px');
@@ -127,7 +146,7 @@ function previewPage(params) {
 }
 
 const server = createServer(async (req,res) => {
-  const url = new URL(req.url || '/', 'http://127.0.0.1:8765');
+  const url = new URL(req.url || '/', `http://127.0.0.1:${port}`);
   res.setHeader('Cache-Control','no-store');
   res.setHeader('Access-Control-Allow-Origin','*');
   res.setHeader('X-Content-Type-Options','nosniff');
@@ -149,4 +168,4 @@ const server = createServer(async (req,res) => {
   }
 });
 server.on('error',error=>{console.error(error.message);process.exitCode=1;});
-server.listen(8765,'127.0.0.1',()=>console.log(`Preview: http://127.0.0.1:8765/\nRoot: ${fileURLToPath(root)}`));
+server.listen(port,'127.0.0.1',()=>console.log(`Preview: http://127.0.0.1:${port}/\nRoot: ${fileURLToPath(root)}`));

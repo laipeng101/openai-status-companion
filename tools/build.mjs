@@ -5,7 +5,7 @@ const metadata = `// ==UserScript==
 // @name         OpenAI Status Companion
 // @name:zh-CN   OpenAI 状态助手
 // @namespace    https://github.com/laipeng101/openai-status-companion
-// @version      2.0.0
+// @version      2.0.1
 // @description  Show official OpenAI status, components, incidents and maintenance on ChatGPT and Aizex / Leopard-X. English and Chinese UI.
 // @description:zh-CN 在 ChatGPT 与 Aizex / Leopard-X 显示 OpenAI 官方状态、组件、事件及计划维护，支持中英文、主题和自适应布局。
 // @author       laipeng101

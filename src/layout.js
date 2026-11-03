@@ -1,6 +1,6 @@
 // Site adapters contain only structural selectors; no conversation text is read.
 export const ADAPTERS = {
-  chatgpt: ['#app-shell-sidebar', '#stage-slideover-sidebar', '#stage-sidebar-tiny-bar', '[data-testid="sidebar"]'],
+  chatgpt: ['#app-shell-sidebar', '[data-app-navigation-rail="true"]', '#stage-slideover-sidebar', '#stage-sidebar-tiny-bar', '[data-testid="sidebar"]'],
   leopard: ['#stage-slideover-sidebar', '#stage-slidover-sidebar', '#stage-sidebar-tiny-bar',
     '[data-testid="stage-slideover-sidebar"]', '[data-testid="stage-slidover-sidebar"]',
     '[data-testid="stage-sidebar-tiny-bar"]', '[data-testid="sidebar"]'],

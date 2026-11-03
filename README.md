@@ -6,7 +6,7 @@ A small, independent userscript that displays official OpenAI service status on 
 
 ## Features
 
-- Compact launcher beside the desktop sidebar; follows sidebar resizing, collapse and replacement. On narrow screens it stays in a viewport corner. Left/right positions are also available.
+- In automatic position mode, the compact launcher docks beside the left sidebar and follows it as it expands, collapses, resizes or is replaced. On narrow screens it stays in a viewport corner. Left/right positions are also available.
 - Official component groups, active incidents, scheduled maintenance and local fetch time. Incident titles and update bodies remain the original official text.
 - English and Simplified Chinese UI, automatic page/browser language detection, and a persistent language selector.
 - Website theme detection, explicit light/dark options, Shadow DOM isolation, keyboard controls and reduced-motion support.
@@ -16,8 +16,6 @@ A small, independent userscript that displays official OpenAI service status on 
 ## Install and use
 
 Install from [Greasy Fork](https://greasyfork.org/en/scripts/603564-openai-status-companion), using a userscript manager such as Tampermonkey. Open one of the supported sites and select the status launcher. The gear button opens language, theme and position preferences. Escape closes the panel.
-
-**Migrating from “OpenAI 官方状态中文提示（aizex）” 1.6.2:** the new name/namespace creates a separate script identity. Disable the old script after installing this one. The new widget warns when the old widget is present; it does not change another script's settings.
 
 ## Data and privacy
 
@@ -45,8 +43,8 @@ Add a registry entry in `src/locales.js` with `label`, `lang`, `dir`, `messages`
 
 ## Release
 
-See [publishing guide](docs/publishing.md) and [changelog](CHANGELOG.md). Release tags use `v2.0.0` style. Increase the package and userscript versions together, pass checks, commit `src/` and `dist/`, then publish the tag/Release. Greasy Fork imports the `main` branch raw URL and checks automatically; the userscript itself does not check for script updates.
+See [publishing guide](docs/publishing.md) and [changelog](CHANGELOG.md). Release tags use `v2.0.1` style. Increase the package and userscript versions together, pass checks, commit `src/` and `dist/`, then publish the tag/Release. Greasy Fork imports the `main` branch raw URL and checks automatically; the userscript itself does not check for script updates.
 
-## License and origin
+## License
 
-MIT. Successor to the owner's locally installed, Codex-assisted 1.6.2 Aizex status script, supplied by the owner for this adaptation.
+MIT.

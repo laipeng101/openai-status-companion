@@ -2,7 +2,7 @@
 // @name         OpenAI Status Companion
 // @name:zh-CN   OpenAI 状态助手
 // @namespace    https://github.com/laipeng101/openai-status-companion
-// @version      2.0.0
+// @version      2.0.1
 // @description  Show official OpenAI status, components, incidents and maintenance on ChatGPT and Aizex / Leopard-X. English and Chinese UI.
 // @description:zh-CN 在 ChatGPT 与 Aizex / Leopard-X 显示 OpenAI 官方状态、组件、事件及计划维护，支持中英文、主题和自适应布局。
 // @author       laipeng101
@@ -396,7 +396,6 @@
     errorEmpty: "The official status page was empty",
     errorSummary: "No official status summary was found",
     errorIncomplete: "The official status summary was incomplete",
-    oldVersionNotice: "The old “OpenAI 官方状态中文提示（aizex）” script is also running. Disable version 1.6.2 in your userscript manager to avoid duplicate widgets.",
     menuToggle: "Toggle OpenAI status panel",
     menuSettings: "OpenAI status preferences",
     settings: "Preferences",
@@ -513,7 +512,6 @@
     errorEmpty: "官方状态页面内容为空",
     errorSummary: "未找到官方状态摘要",
     errorIncomplete: "官方状态摘要不完整",
-    oldVersionNotice: "旧版“OpenAI 官方状态中文提示（aizex）”也在运行。请在脚本管理器中停用 1.6.2 版，避免重复显示。",
     menuToggle: "展开 / 收起 OpenAI 状态面板",
     menuSettings: "OpenAI 状态偏好设置",
     settings: "偏好设置",
@@ -674,7 +672,7 @@
 
   // src/layout.js
   var ADAPTERS = {
-    chatgpt: ["#app-shell-sidebar", "#stage-slideover-sidebar", "#stage-sidebar-tiny-bar", '[data-testid="sidebar"]'],
+    chatgpt: ["#app-shell-sidebar", '[data-app-navigation-rail="true"]', "#stage-slideover-sidebar", "#stage-sidebar-tiny-bar", '[data-testid="sidebar"]'],
     leopard: [
       "#stage-slideover-sidebar",
       "#stage-slidover-sidebar",
@@ -721,6 +719,117 @@
       panelBottom: bottomGap + launcherHeight + 9,
       panelHeight: Math.max(40, Math.min(680, height - topGap - bottomGap - launcherHeight - 9))
     };
+  }
+
+  // src/sidebar.js
+  var SETTLE_TIME = 200;
+  var MAX_ANIMATION_TIME = 5e3;
+  var ATTRIBUTES = [
+    "class",
+    "style",
+    "hidden",
+    "inert",
+    "aria-hidden",
+    "aria-expanded",
+    "data-state",
+    "data-app-shell-sidebar-open",
+    "data-slate-sidebar-peeking"
+  ];
+  function visibleSidebarRect(element, viewport) {
+    const view = element.ownerDocument.defaultView;
+    const bounds = element.getBoundingClientRect();
+    let left = Math.max(bounds.left, viewport.left), right = Math.min(bounds.right, viewport.right);
+    let top = Math.max(bounds.top, viewport.top), bottom = Math.min(bounds.bottom, viewport.bottom);
+    for (let node = element; node; node = node.parentElement) {
+      const style = view.getComputedStyle(node);
+      if (node.hidden || style.display === "none" || ["hidden", "collapse"].includes(style.visibility) || style.contentVisibility === "hidden" || Number.parseFloat(style.opacity) === 0) return null;
+      if (node === element) continue;
+      const paintClip = /\b(paint|strict|content)\b/.test(style.contain);
+      const clipX = paintClip || ["hidden", "clip", "auto", "scroll", "overlay"].includes(style.overflowX || style.overflow);
+      const clipY = paintClip || ["hidden", "clip", "auto", "scroll", "overlay"].includes(style.overflowY || style.overflow);
+      if (!clipX && !clipY) continue;
+      const rect = node.getBoundingClientRect();
+      if (clipX) {
+        left = Math.max(left, rect.left);
+        right = Math.min(right, rect.right);
+      }
+      if (clipY) {
+        top = Math.max(top, rect.top);
+        bottom = Math.min(bottom, rect.bottom);
+      }
+    }
+    if (right <= left || bottom <= top) return null;
+    return { left, right, top, bottom, width: right - left, height: bottom - top, visible: true };
+  }
+  function createSidebarTracker(document2, selectors, onLayout) {
+    const view = document2.defaultView;
+    let sidebars = [], shell = /* @__PURE__ */ new Set(), frame = 0, settleUntil = 0, paused = false;
+    const animations = /* @__PURE__ */ new Map();
+    const observer = new view.MutationObserver(() => {
+      discover();
+      schedule(true);
+    });
+    const resizeObserver = typeof view.ResizeObserver === "function" ? new view.ResizeObserver(() => schedule()) : null;
+    const events = ["transitionrun", "transitionend", "transitioncancel", "animationstart", "animationend", "animationcancel"];
+    function schedule(settle = false) {
+      if (paused || document2.hidden) return;
+      if (settle) settleUntil = view.performance.now() + SETTLE_TIME;
+      if (!frame) frame = view.requestAnimationFrame(tick);
+    }
+    function tick(now) {
+      frame = 0;
+      if (paused || document2.hidden) return;
+      for (const [node, running] of animations) {
+        for (const [key, started] of running) if (now - started >= MAX_ANIMATION_TIME) running.delete(key);
+        if (!running.size) animations.delete(node);
+      }
+      onLayout();
+      if (animations.size || now < settleUntil) schedule();
+    }
+    function animation(event) {
+      if (event.target !== event.currentTarget) return;
+      const key = `${event.type.startsWith("transition") ? "transition" : "animation"}:${event.propertyName || event.animationName}:${event.pseudoElement || ""}`;
+      if (event.type === "transitionrun" || event.type === "animationstart") {
+        if (!animations.has(event.target)) animations.set(event.target, /* @__PURE__ */ new Map());
+        animations.get(event.target).set(key, view.performance.now());
+      } else {
+        animations.get(event.target)?.delete(key);
+        if (!animations.get(event.target)?.size) animations.delete(event.target);
+      }
+      schedule(true);
+    }
+    function discover() {
+      const next = [...document2.querySelectorAll(selectors)];
+      const nodes = /* @__PURE__ */ new Set();
+      for (const sidebar of next) for (let node = sidebar; node; node = node.parentElement) nodes.add(node);
+      if (next.length === sidebars.length && next.every((node, index) => node === sidebars[index]) && nodes.size === shell.size && [...nodes].every((node) => shell.has(node))) return sidebars;
+      observer.disconnect();
+      resizeObserver?.disconnect();
+      for (const node of shell) for (const name of events) node.removeEventListener(name, animation);
+      sidebars = next;
+      shell = nodes;
+      animations.clear();
+      for (const node of shell) {
+        observer.observe(node, { attributes: true, attributeFilter: ATTRIBUTES, childList: true });
+        if (node !== document2.body && node !== document2.documentElement) resizeObserver?.observe(node);
+        for (const name of events) node.addEventListener(name, animation, { passive: true });
+      }
+      return sidebars;
+    }
+    function pause() {
+      paused = true;
+      if (frame) view.cancelAnimationFrame(frame);
+      frame = 0;
+      settleUntil = 0;
+      animations.clear();
+    }
+    function resume() {
+      paused = false;
+      discover();
+      schedule(true);
+    }
+    discover();
+    return { discover, schedule, pause, resume };
   }
 
   // src/transport.js
@@ -886,7 +995,6 @@ select {min-height:32px; max-width:64%; padding:4px 8px; border:1px solid var(--
 
   // src/main.js
   var HOST_ID = "openai-status-companion";
-  var OLD_HOST_ID = "openai-official-status-zh-widget";
   var SETTINGS_KEY = "openai-status-companion:preferences";
   var NOTICE_KEY = "openai-status-companion:last-notice";
   var REFRESH_INTERVAL = 6e4;
@@ -900,7 +1008,7 @@ select {min-height:32px; max-width:64%; padding:4px 8px; border:1px solid var(--
     const t = (key, params) => translate(locale, key, params);
     let data = null, error = null, fetchedAt = 0, lastRequestAt = 0;
     let loading = false, expanded = false, settingsOpen = false;
-    let pollTimer = 0, layoutTimer = 0, placementFrame = 0, toastTimer = 0;
+    let pollTimer = 0, layoutTimer = 0, toastTimer = 0;
     let fingerprint = "";
     let menuLocale = "", menuIds = [];
     try {
@@ -1057,7 +1165,6 @@ select {min-height:32px; max-width:64%; padding:4px 8px; border:1px solid var(--
       const focusKey = shadow.activeElement?.dataset.focusKey;
       const previousScroll = panel.scrollTop;
       const fragment = document.createDocumentFragment();
-      if (document.getElementById(OLD_HOST_ID)) fragment.append(el("div", "note", t("oldVersionNotice")));
       if (!data) {
         fragment.append(el("div", error ? "error" : "empty", error ? t("fetchFailed", { error: errorText() }) : t("loading")));
       } else {
@@ -1236,45 +1343,22 @@ ${date(latest.display_at || latest.updated_at || latest.created_at)}`));
       if (!document.hidden) pollTimer = setTimeout(() => refresh(), REFRESH_INTERVAL);
     }
     const selectors = ADAPTERS[host.dataset.adapter].join(",");
-    let observedSidebars = [];
-    const resizeObserver = typeof ResizeObserver === "function" ? new ResizeObserver(schedulePlacement) : null;
-    function discoverSidebars() {
-      const next = [...document.querySelectorAll(selectors)];
-      if (next.length !== observedSidebars.length || next.some((item, i) => item !== observedSidebars[i])) {
-        resizeObserver?.disconnect();
-        for (const item of observedSidebars) item.removeEventListener("transitionend", schedulePlacement);
-        observedSidebars = next;
-        for (const item of next) {
-          resizeObserver?.observe(item);
-          item.addEventListener("transitionend", schedulePlacement, { passive: true });
-        }
-      }
-    }
+    const sidebarTracker = createSidebarTracker(document, selectors, place);
     function schedulePlacement() {
-      if (!placementFrame) placementFrame = requestAnimationFrame(() => {
-        placementFrame = 0;
-        place();
-      });
+      sidebarTracker.schedule();
     }
     function place() {
       if (!host.isConnected) document.documentElement.append(host);
       host.hidden = Boolean(document.fullscreenElement);
-      discoverSidebars();
       const viewport = window.visualViewport;
       const width = viewport?.width || innerWidth, height = viewport?.height || innerHeight;
       const offsetLeft = viewport?.offsetLeft || 0, offsetTop = viewport?.offsetTop || 0;
-      const rects = observedSidebars.map((item) => {
-        const rect = item.getBoundingClientRect();
-        const computed = getComputedStyle(item);
-        return { ...rect.toJSON(), visible: !item.hidden && computed.visibility !== "hidden" && computed.display !== "none" };
-      });
+      const clip = { left: offsetLeft, right: offsetLeft + width, top: offsetTop, bottom: offsetTop + height };
+      const rects = sidebarTracker.discover().map((item) => visibleSidebarRect(item, clip)).filter(Boolean).map((rect) => ({ ...rect, left: rect.left - offsetLeft, right: rect.right - offsetLeft }));
       const sidebar = chooseSidebar(rects, width, height);
       const launcherRect = launcher.getBoundingClientRect();
       const hostStyle = getComputedStyle(host);
       const safeInset = (edge) => Number.parseFloat(hostStyle.getPropertyValue(`--safe-${edge}`)) || 0;
-      const predecessor = document.getElementById(OLD_HOST_ID);
-      const oldPanel = predecessor?.shadowRoot?.querySelector(".panel.open");
-      const position = oldPanel?.getBoundingClientRect().height ? "right" : settings.position;
       const placement = calculatePlacement({
         width,
         height,
@@ -1283,19 +1367,12 @@ ${date(latest.display_at || latest.updated_at || latest.created_at)}`));
         sidebarRight: sidebar?.right || 0,
         launcherWidth: launcherRect.width,
         launcherHeight: launcherRect.height,
-        position,
+        position: settings.position,
         safeLeft: safeInset("left"),
         safeRight: safeInset("right"),
         safeTop: safeInset("top"),
         safeBottom: safeInset("bottom")
       });
-      const oldRect = predecessor?.getBoundingClientRect();
-      if (oldRect?.width && oldRect.height && placement.left < oldRect.right && placement.left + launcherRect.width > oldRect.left && placement.top + launcherRect.height > oldRect.top && placement.top < oldRect.bottom) {
-        const lift = Math.min(placement.top - offsetTop - 10, launcherRect.height + 10);
-        placement.top -= Math.max(0, lift);
-        placement.panelBottom += Math.max(0, lift);
-        placement.panelHeight = Math.max(40, placement.panelHeight - Math.max(0, lift));
-      }
       host.style.left = `${placement.left}px`;
       host.style.top = `${placement.top}px`;
       host.style.bottom = "auto";
@@ -1332,10 +1409,12 @@ ${date(latest.display_at || latest.updated_at || latest.created_at)}`));
       if (document.hidden) {
         clearTimeout(pollTimer);
         clearTimeout(layoutTimer);
+        sidebarTracker.pause();
         return;
       }
       if (Date.now() - lastRequestAt >= FOCUS_REFRESH_AGE) refresh();
       else schedulePoll();
+      sidebarTracker.resume();
       layoutWatch();
     });
     const focusRefresh = () => {
@@ -1347,12 +1426,14 @@ ${date(latest.display_at || latest.updated_at || latest.created_at)}`));
     window.visualViewport?.addEventListener("resize", schedulePlacement, { passive: true });
     window.visualViewport?.addEventListener("scroll", schedulePlacement, { passive: true });
     window.addEventListener("pageshow", () => {
+      sidebarTracker.resume();
       schedulePoll();
       layoutWatch();
     });
     window.addEventListener("pagehide", () => {
       clearTimeout(pollTimer);
       clearTimeout(layoutTimer);
+      sidebarTracker.pause();
     });
     function updateMenus() {
       if (typeof GM_registerMenuCommand !== "function" || menuLocale === locale) return;

@@ -2,11 +2,11 @@ import {STATUS_URL, parseOfficialPage, normalizeOfficialSummary, normalizeCompat
   getOverall, getComponentStatus, findLatestUpdate, validateResponse, safeStatusUrl} from './status-core.js';
 import {LOCALES, resolveLocale, translate, translateComponent, translateGroup} from './locales.js';
 import {ADAPTERS, adapterFor, chooseSidebar, calculatePlacement} from './layout.js';
+import {createSidebarTracker, visibleSidebarRect} from './sidebar.js';
 import {request} from './transport.js';
 import {styles} from './styles.js';
 
 const HOST_ID = 'openai-status-companion';
-const OLD_HOST_ID = 'openai-official-status-zh-widget';
 const SETTINGS_KEY = 'openai-status-companion:preferences';
 const NOTICE_KEY = 'openai-status-companion:last-notice';
 const REFRESH_INTERVAL = 60_000;
@@ -21,7 +21,7 @@ function start() {
   const t = (key, params) => translate(locale, key, params);
   let data = null, error = null, fetchedAt = 0, lastRequestAt = 0;
   let loading = false, expanded = false, settingsOpen = false;
-  let pollTimer = 0, layoutTimer = 0, placementFrame = 0, toastTimer = 0;
+  let pollTimer = 0, layoutTimer = 0, toastTimer = 0;
   let fingerprint = '';
   let menuLocale = '', menuIds = [];
   try { fingerprint = sessionStorage.getItem(NOTICE_KEY) || ''; } catch { /* Optional deduplication. */ }
@@ -168,7 +168,6 @@ function start() {
     const focusKey = shadow.activeElement?.dataset.focusKey;
     const previousScroll = panel.scrollTop;
     const fragment = document.createDocumentFragment();
-    if (document.getElementById(OLD_HOST_ID)) fragment.append(el('div','note',t('oldVersionNotice')));
     if (!data) {
       fragment.append(el('div', error ? 'error' : 'empty', error ? t('fetchFailed',{error:errorText()}) : t('loading')));
     } else {
@@ -304,51 +303,26 @@ function start() {
   }
 
   const selectors=ADAPTERS[host.dataset.adapter].join(',');
-  let observedSidebars=[];
-  const resizeObserver=typeof ResizeObserver==='function' ? new ResizeObserver(schedulePlacement) : null;
-  function discoverSidebars() {
-    const next=[...document.querySelectorAll(selectors)];
-    if (next.length!==observedSidebars.length || next.some((item,i)=>item!==observedSidebars[i])) {
-      resizeObserver?.disconnect();
-      for (const item of observedSidebars) item.removeEventListener('transitionend',schedulePlacement);
-      observedSidebars=next;
-      for (const item of next) {resizeObserver?.observe(item); item.addEventListener('transitionend',schedulePlacement,{passive:true});}
-    }
-  }
+  const sidebarTracker=createSidebarTracker(document,selectors,place);
   function schedulePlacement() {
-    if (!placementFrame) placementFrame=requestAnimationFrame(()=>{placementFrame=0; place();});
+    sidebarTracker.schedule();
   }
   function place() {
     if (!host.isConnected) document.documentElement.append(host);
     host.hidden=Boolean(document.fullscreenElement);
-    discoverSidebars();
     const viewport=window.visualViewport;
     const width=viewport?.width || innerWidth, height=viewport?.height || innerHeight;
     const offsetLeft=viewport?.offsetLeft || 0, offsetTop=viewport?.offsetTop || 0;
-    const rects=observedSidebars.map(item=>{
-      const rect=item.getBoundingClientRect();
-      const computed=getComputedStyle(item);
-      return {...rect.toJSON(), visible:!item.hidden && computed.visibility!=='hidden' && computed.display!=='none'};
-    });
+    const clip={left:offsetLeft,right:offsetLeft+width,top:offsetTop,bottom:offsetTop+height};
+    const rects=sidebarTracker.discover().map(item=>visibleSidebarRect(item,clip)).filter(Boolean)
+      .map(rect=>({...rect,left:rect.left-offsetLeft,right:rect.right-offsetLeft}));
     const sidebar=chooseSidebar(rects,width,height);
     const launcherRect=launcher.getBoundingClientRect();
     const hostStyle=getComputedStyle(host);
     const safeInset=edge=>Number.parseFloat(hostStyle.getPropertyValue(`--safe-${edge}`)) || 0;
-    const predecessor=document.getElementById(OLD_HOST_ID);
-    const oldPanel=predecessor?.shadowRoot?.querySelector('.panel.open');
-    const position=oldPanel?.getBoundingClientRect().height ? 'right' : settings.position;
     const placement=calculatePlacement({width,height,offsetLeft,offsetTop,sidebarRight:sidebar?.right || 0,
-      launcherWidth:launcherRect.width,launcherHeight:launcherRect.height,position,
+      launcherWidth:launcherRect.width,launcherHeight:launcherRect.height,position:settings.position,
       safeLeft:safeInset('left'),safeRight:safeInset('right'),safeTop:safeInset('top'),safeBottom:safeInset('bottom')});
-    // A renamed predecessor has its own higher-z-index host. Keep migration advice reachable.
-    const oldRect=predecessor?.getBoundingClientRect();
-    if (oldRect?.width && oldRect.height && placement.left < oldRect.right &&
-      placement.left+launcherRect.width > oldRect.left && placement.top+launcherRect.height > oldRect.top &&
-      placement.top < oldRect.bottom) {
-      const lift=Math.min(placement.top-offsetTop-10,launcherRect.height+10);
-      placement.top-=Math.max(0,lift); placement.panelBottom+=Math.max(0,lift);
-      placement.panelHeight=Math.max(40,placement.panelHeight-Math.max(0,lift));
-    }
     host.style.left=`${placement.left}px`; host.style.top=`${placement.top}px`; host.style.bottom='auto';
     host.style.setProperty('--panel-left',`${placement.panelLeft}px`);
     host.style.setProperty('--panel-width',`${placement.panelWidth}px`);
@@ -374,8 +348,9 @@ function start() {
   const colorScheme=matchMedia('(prefers-color-scheme: dark)');
   colorScheme.addEventListener('change',()=>{updateChrome();schedulePlacement();});
   document.addEventListener('visibilitychange',()=>{
-    if (document.hidden) {clearTimeout(pollTimer);clearTimeout(layoutTimer);return;}
+    if (document.hidden) {clearTimeout(pollTimer);clearTimeout(layoutTimer);sidebarTracker.pause();return;}
     if (Date.now()-lastRequestAt>=FOCUS_REFRESH_AGE) refresh(); else schedulePoll();
+    sidebarTracker.resume();
     layoutWatch();
   });
   const focusRefresh=()=>{if (!document.hidden && Date.now()-lastRequestAt>=FOCUS_REFRESH_AGE) refresh();};
@@ -384,8 +359,8 @@ function start() {
   window.addEventListener('resize',schedulePlacement,{passive:true});
   window.visualViewport?.addEventListener('resize',schedulePlacement,{passive:true});
   window.visualViewport?.addEventListener('scroll',schedulePlacement,{passive:true});
-  window.addEventListener('pageshow',()=>{schedulePoll();layoutWatch();});
-  window.addEventListener('pagehide',()=>{clearTimeout(pollTimer);clearTimeout(layoutTimer);});
+  window.addEventListener('pageshow',()=>{sidebarTracker.resume();schedulePoll();layoutWatch();});
+  window.addEventListener('pagehide',()=>{clearTimeout(pollTimer);clearTimeout(layoutTimer);sidebarTracker.pause();});
   function updateMenus() {
     if (typeof GM_registerMenuCommand!=='function' || menuLocale===locale) return;
     if (menuIds.length && typeof GM_unregisterMenuCommand!=='function') return;

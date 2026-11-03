@@ -10,7 +10,7 @@ See official OpenAI service status without leaving your chat. This independent u
 
 ## What it shows
 
-- A compact status launcher beside the desktop sidebar, following sidebar collapse and resizing. At narrow widths the launcher stays in a corner and the panel is bounded by the viewport.
+- In automatic position mode, a compact status launcher docks beside the left sidebar and follows it as it expands, collapses or changes width. At narrow widths the launcher stays in a corner and the panel is bounded by the viewport.
 - Official component groups, current incidents, scheduled maintenance and the last successful fetch time.
 - English and Simplified Chinese UI, with page/browser language detection and a manual language selector. Official incident titles and messages remain in their original language; there is no translation service.
 - Website light/dark theme following, manual theme and corner controls, keyboard access and Escape to close.
@@ -21,8 +21,6 @@ See official OpenAI service status without leaving your chat. This independent u
 
 Install a userscript manager such as Tampermonkey, then use **Install this script** above. Open a supported site, click the status launcher, and use the gear button for preferences. If your manager requires browser-side setup to run userscripts, follow its official installation instructions.
 
-**Migrating from “OpenAI 官方状态中文提示（aizex）” 1.6.2:** disable the old script in your manager before using this renamed version. The name and namespace identify a new script, so installing it does not automatically replace the predecessor. A migration notice appears if both widgets are present.
-
 ## Privacy and permissions
 
 Status requests are anonymous GETs to `status.openai.com`, without account cookies. The script inspects sidebar geometry plus page language/theme attributes; it does not read or upload prompts, conversations or account tokens. Only its preferences and a status-notice fingerprint are saved locally. No analytics, ads, remote executable dependencies or third-party translation services are included.
@@ -31,4 +29,4 @@ Status requests are anonymous GETs to `status.openai.com`, without account cooki
 
 [Source code, documentation and issue tracker](https://github.com/laipeng101/openai-status-companion). MIT license. The complete, readable userscript is hosted here and synchronized from GitHub. Install and update through Greasy Fork.
 
-Testing includes 56 automated regression tests, Chrome fixture checks at desktop and 390px widths, and live Leopard-X layout integration using replayed public status data. See the repository's validation document for tested boundaries. Layouts may change as the supported sites evolve.
+Testing includes automated regressions, Chrome fixture checks at desktop and 390px widths, and live Leopard-X layout integration using replayed public status data. See the repository's [validation document](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md) for results and tested boundaries. Layouts may change as the supported sites evolve.

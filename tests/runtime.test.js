@@ -16,12 +16,12 @@ const successful = (summary = official()) => ({ status: 200, responseText: asRsc
 const nextTurn = () => new Promise((resolve) => setImmediate(resolve));
 
 function environment(t, { url = 'https://chatgpt.com/', lang = 'en', theme = 'light',
-    preferences = {}, oldHost = false, sidebarWidth = 340, width = 1280, height = 800,
-    response = () => successful(), brokenStorage = false, oldHostRect = null } = {}) {
+    preferences = {}, sidebarWidth = 340, width = 1280, height = 800,
+    response = () => successful(), brokenStorage = false, clipWidth = null } = {}) {
     let responder = response;
     const requests = [], menus = [], activeMenus = new Map(), saved = new Map([[SETTINGS_KEY, structuredClone(preferences)]]);
     const sidebarId = new URL(url).hostname === 'chatgpt.com' ? 'app-shell-sidebar' : 'stage-slideover-sidebar';
-    const dom = new JSDOM(`<!doctype html><html lang="${lang}" class="${theme}"><body><div id="${sidebarId}"></div>${oldHost ? '<div id="openai-official-status-zh-widget"></div>' : ''}</body></html>`, {
+    const dom = new JSDOM(`<!doctype html><html lang="${lang}" class="${theme}"><body><aside id="sidebar-clip" style="overflow-x:hidden;overflow-y:hidden"><div id="${sidebarId}"></div></aside><main><div id="message"></div></main></body></html>`, {
         url, runScripts: 'dangerously', pretendToBeVisual: true
     });
     const window = dom.window;
@@ -29,8 +29,11 @@ function environment(t, { url = 'https://chatgpt.com/', lang = 'en', theme = 'li
     Object.defineProperty(window.navigator, 'languages', { configurable: true, value: ['en-US', 'zh-CN'] });
     window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
     window.ResizeObserver = class { observe() {} disconnect() {} };
+    let visibleWidth = clipWidth ?? sidebarWidth;
+    let geometryReads = 0;
     window.HTMLElement.prototype.getBoundingClientRect = function () {
-        const dimensions = this.id === 'openai-official-status-zh-widget' && oldHostRect ? oldHostRect
+        geometryReads += 1;
+        const dimensions = this.id === 'sidebar-clip' ? [0, 0, visibleWidth, height]
             : this.id === sidebarId ? [0, 0, sidebarWidth, height]
             : this.classList.contains('launcher') ? [0, 0, 180, 38] : [0, 0, 0, 0];
         const [x, y, rectWidth, rectHeight] = dimensions;
@@ -68,6 +71,12 @@ function environment(t, { url = 'https://chatgpt.com/', lang = 'en', theme = 'li
     const shadow = host.shadowRoot;
     return {
         dom, window, host, shadow, requests, menus, activeMenus, saved,
+        get geometryReads() { return geometryReads; },
+        async frame() { await new Promise(resolve => window.requestAnimationFrame(() => resolve())); },
+        clip(next) {
+            visibleWidth = next;
+            window.document.getElementById('sidebar-clip').style.width = `${next}px`;
+        },
         setResponse(next) { responder = next; },
         async settle() { for (let index = 0; index < 5; index += 1) await nextTurn(); },
         open() { shadow.querySelector('.launcher').click(); },
@@ -191,9 +200,8 @@ test('component disclosure state, focus and scroll survive an asynchronous refre
     assert.equal(app.shadow.querySelector('.panel').scrollTop, 90);
 });
 
-test('duplicate execution creates no extra host or requests and old version is disclosed', async (t) => {
-    const app = environment(t, { oldHost: true }); await app.settle(); app.open();
-    assert.match(app.shadow.querySelector('.note').textContent, /Disable version 1\.6\.2/);
+test('duplicate execution creates no extra host or requests', async (t) => {
+    const app = environment(t); await app.settle(); app.open();
     const before = app.requests.length; app.window.eval(bundle); await app.settle();
     assert.equal(app.window.document.querySelectorAll(`#${HOST_ID}`).length, 1);
     assert.equal(app.requests.length, before);
@@ -254,35 +262,29 @@ test('unchanged background status does not repeatedly mutate the live announceme
     assert.equal(label.textContent, 'OpenAI operational');
 });
 
-test('renamed predecessor cannot cover the new launcher or migration warning', async (t) => {
-    const app = environment(t, { oldHost: true, oldHostRect: [354, 748, 180, 38] });
-    await app.settle();
-    assert.ok(Number.parseFloat(app.host.style.top) + 38 <= 748 - 10);
-    app.open();
-    assert.match(app.shadow.querySelector('.note').textContent, /Disable version 1\.6\.2/);
-    assert.ok(Number.parseFloat(app.host.style.getPropertyValue('--panel-bottom')) > 61);
+test('launcher and open panel dock to the visible clipped sidebar edge immediately on all matched hosts', async (t) => {
+    for (const url of ['https://chatgpt.com/', 'https://leopard-x.memofun.net/', 'https://mana-x.aizex.net/']) {
+        const fullWidth = url.includes('chatgpt.com') ? 340 : 260;
+        const app = environment(t, { url, sidebarWidth: fullWidth, clipWidth: 52 });
+        await app.settle(); app.open();
+        assert.equal(app.host.style.left, '66px');
+        assert.equal(app.host.style.getPropertyValue('--panel-left'), '66px');
+        for (const visible of [fullWidth, 180, 52]) {
+            app.clip(visible); await app.settle(); await app.frame();
+            assert.equal(app.host.style.left, `${visible+14}px`);
+            assert.equal(app.host.style.getPropertyValue('--panel-left'), `${visible+14}px`);
+        }
+        assert.equal(app.shadow.querySelector('.panel').hidden, false);
+    }
 });
 
-test('an expanded predecessor panel temporarily moves the new widget right without changing preference', async (t) => {
-    const app = environment(t, { oldHost: true, oldHostRect: [14, 748, 180, 38], preferences: { position: 'left' } });
-    await app.settle();
-    const predecessor = app.window.document.getElementById('openai-official-status-zh-widget');
-    const oldShadow = predecessor.attachShadow({ mode: 'open' });
-    const oldPanel = app.window.document.createElement('section');
-    oldPanel.className = 'panel open';
-    oldPanel.getBoundingClientRect = () => ({ left: 14, right: 406, top: 139, bottom: 739, width: 392, height: 600 });
-    oldShadow.append(oldPanel);
-    app.window.dispatchEvent(new app.window.Event('resize'));
-    await new Promise((resolve) => setTimeout(resolve, 30));
-    assert.equal(app.host.style.left, '1086px');
-    assert.ok(Number.parseFloat(app.host.style.getPropertyValue('--panel-left')) >= 406);
-    assert.equal(app.saved.get(SETTINGS_KEY).position, 'left');
-
-    oldPanel.classList.remove('open');
-    app.window.dispatchEvent(new app.window.Event('resize'));
-    await new Promise((resolve) => setTimeout(resolve, 30));
-    assert.equal(app.host.style.left, '14px');
-    assert.equal(app.saved.get(SETTINGS_KEY).position, 'left');
+test('fixed corner preferences and narrow mobile placement stay stable during sidebar collapse', async (t) => {
+    for (const [preferences,width,left] of [[{position:'left'},1280,14],[{position:'right'},1280,1086],[{},390,10]]) {
+        const app = environment(t, { preferences, width });
+        await app.settle();
+        app.clip(52); await app.settle(); await app.frame();
+        assert.equal(app.host.style.left, `${left}px`);
+    }
 });
 
 test('native fetch fallback omits credentials and distinguishes response-body timeout', async (t) => {
