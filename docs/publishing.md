@@ -17,7 +17,11 @@ Import the branch-based raw URL:
 
 Choose JavaScript, English as the default metadata language, and automatic synchronization. Supply English and Chinese descriptions. Verify author, version, MIT license, supported sites and rendered descriptions on the public listing. The imported code must contain the whole script. Keep installation links pointed at Greasy Fork so its update history and checks remain authoritative.
 
-Automatic polling is sufficient for source synchronization. A repository push/release webhook may optionally trigger it sooner; do not expose webhook credentials in the repository or documentation.
+An active GitHub push webhook is configured for this repository, using Greasy Fork's account-specific HTTPS endpoint, JSON payloads, the existing signing secret and enabled TLS certificate verification. Both the script and its English/Chinese description URLs follow `main`.
+
+Keep the secret in GitHub's webhook settings; do not include it in code, documentation or screenshots. Reuse the account's existing Greasy Fork secret when configuring another repository, because regenerating it would affect other integrations.
+
+Verify a new webhook in GitHub's Recent Deliveries: a successful ping establishes connectivity and signature validation; a real push must also return HTTP 200 with this script under `updated_scripts` and no `updated_failed` entries. Confirm the corresponding content changed on Greasy Fork. A push changing only a bound description validates description synchronization; the next push modifying `dist/openai-status-companion.user.js` exercises code synchronization and changes Greasy Fork's displayed synchronization type to Webhook. Follow the version/build/check steps above for code releases.
 
 Do not claim that the script itself is official; only its status data is official.
 

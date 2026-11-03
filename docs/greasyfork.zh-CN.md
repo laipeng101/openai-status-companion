@@ -27,6 +27,6 @@
 
 ## 源码与反馈
 
-[GitHub 源码、说明与问题反馈](https://github.com/laipeng101/openai-status-companion)，采用 MIT 许可。此页面保存完整、可读的脚本，并从 GitHub 同步；请通过 Greasy Fork 安装和更新。
+[GitHub 源码、说明与问题反馈](https://github.com/laipeng101/openai-status-companion)，采用 MIT 许可。此页面保存完整、可读的脚本，代码及双语介绍在 GitHub 推送后通过 Webhook 自动同步；请通过 Greasy Fork 安装和更新。
 
 测试涵盖自动化回归、Chrome 桌面及 390px 窄屏场景检查，并使用公开状态快照在真实 Leopard-X 页面验证布局。具体结果、测试范围及限制见仓库[验证说明](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md)；支持站点后续改版仍可能需要跟进适配。
