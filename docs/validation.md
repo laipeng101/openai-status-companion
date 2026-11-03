@@ -17,10 +17,19 @@ The committed fixture is reduced public status data. Live API inspection found t
 ## Chrome visual and integration checks
 
 - The unchanged production bundle was exercised on a loopback fixture using explicit synthetic incident, maintenance, healthy and unavailable data. English/light and Chinese/dark displays were inspected; a 390×844 viewport was verified through the browser developer interface. The fixture is clearly labeled as synthetic and sends no requests to OpenAI.
-- Current live ChatGPT DOM was inspected to confirm `#app-shell-sidebar` and the app shell's structure. Its authenticated page did not permit developer injection through the available browser interface. Its current layout was therefore covered by the matching fixture plus runtime/geometry regression tests, not by a claimed Tampermonkey installation test.
+- Before publication, current live ChatGPT DOM was inspected to confirm `#app-shell-sidebar`; its authenticated page did not permit developer injection through the available interface. The unchanged bundle was covered by the matching fixture and runtime/geometry tests.
 - The unchanged production bundle was injected into an isolated developer world on the live Leopard-X homepage, replaying the public official snapshot. Both old and new widgets were present; the new launcher and migration advice were reachable. The live expanded sidebar ended at x=260 and the new launcher started at x=274. After collapsing, the rail ended at x=52 and the new launcher moved to x=66. The original expanded state was restored.
 - Mana-X has the preserved adapter and runtime regression coverage; no authenticated Mana-X live session was exercised.
 
+## Installed-manager smoke checks after publication
+
+The owner installed 2.0.0 from the Greasy Fork listing and disabled local 1.6.2. The following checks then used the real installed userscript and real official requests, without injected code or replay stubs:
+
+- ChatGPT at 2560×1215 and 390×844 fetched current official-page data and displayed 38/38 operational components, with incident/maintenance sections verified. Only the new host was present.
+- On desktop ChatGPT, the expanded sidebar's right edge was x=340 and the launcher x=354. The 390px panel stayed between x=10 and x=380. English/light preferences switched live and were restored to automatic page language and website theme.
+- A manual live refresh completed with component disclosure still expanded and no lingering busy state.
+- Installed Leopard-X fetched current official-page data, followed its 260px expanded sidebar at x=274, and moved to x=66 beside the 52px collapsed rail after its transition. The expanded sidebar state was restored, and the predecessor widget was absent.
+
 ## Limits
 
-Developer replay verifies rendering and integration, while controlled transport tests verify request options. It does not establish live userscript-manager installation/update behavior, all mobile keyboards, all browsers, future site layouts, or actual service availability for an individual account. The browser interface blocks extension-page automation, so the existing local 1.6.2 script is not silently modified. Users must install the new listing and disable the predecessor as documented.
+Developer replay verifies rendering and integration; controlled transport tests verify request options; installed-manager smoke checks verify this Chrome installation. These checks do not establish future automatic manager-update behavior, all mobile keyboards, all browsers, future site layouts, or actual service availability for an individual account. Extension-page automation is blocked, so the owner performed installation and predecessor deactivation as documented.
