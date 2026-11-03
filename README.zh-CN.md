@@ -15,7 +15,7 @@
 
 ## 安装与使用
 
-通过本项目的 Greasy Fork 页面安装（发布后在仓库 About 区域提供链接），需要 Tampermonkey 等用户脚本管理器。打开支持的站点，点击状态按钮查看详情；齿轮按钮可设置语言、主题和位置，Esc 收起面板。
+通过 [Greasy Fork 页面](https://greasyfork.org/zh-CN/scripts/603564-openai-status-companion)安装，需要 Tampermonkey 等用户脚本管理器。打开支持的站点，点击状态按钮查看详情；齿轮按钮可设置语言、主题和位置，Esc 收起面板。
 
 **从旧版“OpenAI 官方状态中文提示（aizex）”1.6.2 迁移：**新版名称及命名空间形成新的脚本身份，安装后请停用旧脚本。新版会提示旧面板同时存在，但不会替你修改其他脚本的设置。
 

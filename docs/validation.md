@@ -4,7 +4,7 @@ Performed on 2026-11-03 with Node.js 24.20.0 and the user's Chrome session.
 
 ## Automated checks
 
-`npm run check` rebuilds the complete userscript and runs Node/jsdom regression tests. Tests cover:
+`npm run check` rebuilds the complete userscript and runs Node/jsdom regression tests. All 56 tests passed locally. GitHub Actions also passed on the published source commit. Tests cover:
 
 - Public current-schema status snapshot; inert RSC parsing; schema changes and malformed data; unknown statuses; maintenance/outage severity; unordered incident updates; visible groups and safe incident URLs.
 - English/Chinese key and placeholder parity, locale detection and extensible English fallback.

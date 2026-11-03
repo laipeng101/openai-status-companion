@@ -15,7 +15,7 @@ A small, independent userscript that displays official OpenAI service status on 
 
 ## Install and use
 
-Install the script from this project's Greasy Fork listing (linked in the repository About section after publication), using a userscript manager such as Tampermonkey. Open one of the supported sites and select the status launcher. The gear button opens language, theme and position preferences. Escape closes the panel.
+Install from [Greasy Fork](https://greasyfork.org/en/scripts/603564-openai-status-companion), using a userscript manager such as Tampermonkey. Open one of the supported sites and select the status launcher. The gear button opens language, theme and position preferences. Escape closes the panel.
 
 **Migrating from “OpenAI 官方状态中文提示（aizex）” 1.6.2:** the new name/namespace creates a separate script identity. Disable the old script after installing this one. The new widget warns when the old widget is present; it does not change another script's settings.
 
