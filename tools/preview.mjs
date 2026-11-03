@@ -1,6 +1,7 @@
 import {createServer} from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
+import {LOCALES} from '../src/locales.js';
 
 // This server serves only an explicit allowlist of public development artifacts.
 const root = new URL('../', import.meta.url);
@@ -16,7 +17,7 @@ const choice = (value, allowed, fallback) => allowed.includes(value) ? value : f
 function previewPage(params) {
   const config = {
     site: choice(params.get('site'), ['chatgpt','leopard'], 'chatgpt'),
-    language: choice(params.get('language') || params.get('lang'), ['en','zh-CN'], 'en'),
+    language: choice(params.get('language') || params.get('lang'), Object.keys(LOCALES), 'en'),
     theme: choice(params.get('theme'), ['light','dark'], 'light'),
     scene: choice(params.get('scene'), ['healthy','incident','maintenance','failure','compat'], 'healthy'),
     collapsed: params.get('sidebar') === 'collapsed' || ['1','true'].includes(params.get('collapsed')),
@@ -67,7 +68,7 @@ ${config.site==='chatgpt'?'</div>':''}
 <div class="layout"><header class="toolbar">
   <form id="preview-form" method="get">
     <label>Site <select name="site" aria-label="Preview site">${options(['chatgpt','leopard'],config.site)}</select></label>
-    <label>Language <select name="language" aria-label="Preview language">${options(['en','zh-CN'],config.language)}</select></label>
+    <label>Language <select name="language" aria-label="Preview language">${options(Object.keys(LOCALES),config.language)}</select></label>
     <label>Theme <select name="theme" aria-label="Preview theme">${options(['light','dark'],config.theme)}</select></label>
     <label>Scene <select name="scene" aria-label="Preview scene">${options(['healthy','incident','maintenance','failure','compat'],config.scene)}</select></label>
     <input type="hidden" name="sidebar" value="${config.collapsed?'collapsed':'expanded'}">

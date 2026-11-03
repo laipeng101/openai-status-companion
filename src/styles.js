@@ -49,6 +49,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,summary:focus-visible 
 .header {position:sticky; top:0; z-index:2; display:flex; align-items:center;
   justify-content:space-between; gap:10px; padding:13px 14px;
   background:var(--card); border-bottom:1px solid var(--border)}
+.header>div:first-child {min-width:0; overflow-wrap:anywhere}
 .title {margin:0; font-size:15px; line-height:1.4; font-weight:750}
 .subtitle {font-size:11px; color:var(--subtle); margin-top:3px}
 .actions {display:flex; gap:5px; flex:none}
@@ -66,6 +67,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,summary:focus-visible 
 .section {margin-top:14px}
 .section-title {display:flex; justify-content:space-between; gap:10px;
   margin:0 0 7px; color:var(--subtle); font-size:12px; font-weight:650}
+.section-title>span {min-width:0}
 .list {display:grid; gap:6px}
 .component {display:flex; justify-content:space-between; align-items:center; gap:12px;
   padding:7px 8px; border:1px solid var(--border); border-radius:8px; background:var(--card)}
@@ -88,6 +90,7 @@ summary {cursor:pointer; padding:10px; font-size:12px; font-weight:650}
 .incident-name {font-weight:700}
 .update {margin-top:8px; padding-top:8px; border-top:1px solid var(--border);
   font-size:12px; white-space:pre-wrap; color:var(--subtle)}
+.official-body {margin-top:4px; unicode-bidi:plaintext}
 .note,.error,.empty {padding:10px; border:1px dashed var(--border); border-radius:9px;
   font-size:12px; color:var(--subtle)}
 .note {margin-top:10px; border-color:var(--warn)} .error {color:var(--bad)}
@@ -95,7 +98,7 @@ summary {cursor:pointer; padding:10px; font-size:12px; font-weight:650}
 .footer {display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px;
   margin-top:12px; padding-top:10px; border-top:1px solid var(--border); font-size:11px; color:var(--subtle)}
 a {color:var(--info); text-decoration:none} a:hover {text-decoration:underline}
-.settings {padding:10px 14px; border-bottom:1px solid var(--border); display:grid; gap:8px}
+.settings {padding:10px 14px; border-bottom:1px solid var(--border); display:grid; gap:8px; overflow-wrap:anywhere}
 .setting {display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12px}
 select {min-height:32px; max-width:64%; padding:4px 8px; border:1px solid var(--border);
   border-radius:7px; background:var(--card)}

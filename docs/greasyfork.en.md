@@ -12,7 +12,7 @@ See official OpenAI service status without leaving your chat. This independent u
 
 - In automatic position mode, a compact status launcher docks beside the left sidebar and follows it as it expands, collapses or changes width. At narrow widths the launcher stays in a corner and the panel is bounded by the viewport.
 - Official component groups, current incidents, scheduled maintenance and the last successful fetch time.
-- English and Simplified Chinese UI, with page/browser language detection and a manual language selector. Official incident titles and messages remain in their original language; there is no translation service.
+- 13 interface languages: English, Simplified and Traditional Chinese, Spanish, Hindi, Brazilian Portuguese, Japanese, Korean, French, German, Indonesian, Arabic and Russian. Automatic page/browser detection and a manual selector are included. Arabic uses a right-to-left layout. Official incident titles and messages remain in their original language; there is no translation service.
 - Website light/dark theme following, manual theme and corner controls, keyboard access and Escape to close.
 - Visible pages refresh every 60 seconds; background polling pauses. Requests time out after 15 seconds. Failed refreshes retain clearly marked cached data.
 - Incomplete compatibility data is explicitly marked unverified rather than being displayed as a verified all-clear.

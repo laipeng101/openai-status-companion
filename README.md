@@ -8,7 +8,7 @@ A small, independent userscript that displays official OpenAI service status on 
 
 - In automatic position mode, the compact launcher docks beside the left sidebar and follows it as it expands, collapses, resizes or is replaced. On narrow screens it stays in a viewport corner. Left/right positions are also available.
 - Official component groups, active incidents, scheduled maintenance and local fetch time. Incident titles and update bodies remain the original official text.
-- English and Simplified Chinese UI, automatic page/browser language detection, and a persistent language selector.
+- 13 interface languages: English, Simplified and Traditional Chinese, Spanish, Hindi, Brazilian Portuguese, Japanese, Korean, French, German, Indonesian, Arabic and Russian. Automatic page/browser detection and a persistent language selector are included.
 - Website theme detection, explicit light/dark options, Shadow DOM isolation, keyboard controls and reduced-motion support.
 - Refreshes every 60 seconds while visible. Background tabs pause polling; returning to a tab can refresh old data. Requests have a 15-second timeout.
 - Failed refreshes keep the last successful data, clearly marked as cached. A partially available compatibility feed is never presented as a verified all-clear.
@@ -39,11 +39,11 @@ npm run preview
 
 ### Add a language
 
-Add a registry entry in `src/locales.js` with `label`, `lang`, `dir`, `messages`, `componentNames` and `groupNames`. Copy all English message keys and preserve `{placeholders}`; missing keys fall back to English. Add localized userscript metadata in `tools/build.mjs` and a localized listing description before publishing the new language. Run the locale key/placeholder tests, build, and inspect the UI at narrow widths. `dir: 'rtl'` is reserved for future RTL translations; each new language still needs visual verification.
+Add a module under `src/locales/` and register it in `src/locales.js` with `label`, `lang`, `dir`, `messages`, `componentNames` and `groupNames`. Copy all English message keys and preserve `{placeholders}`; missing keys fall back to English. Add localized userscript metadata in `tools/build.mjs`, update the listing description, run checks, and inspect narrow layouts. Arabic uses `dir: 'rtl'`; official incident text keeps its own direction. See [language coverage and selection](docs/languages.md) for regional matching and expansion priorities.
 
 ## Release
 
-See [publishing guide](docs/publishing.md) and [changelog](CHANGELOG.md). Release tags use `v2.0.1` style. Increase the package and userscript versions together, pass checks, commit `src/` and `dist/`, then publish the tag/Release. Greasy Fork imports the `main` branch raw URL and checks automatically; the userscript itself does not check for script updates.
+See [publishing guide](docs/publishing.md) and [changelog](CHANGELOG.md). Release tags use `v2.1.0` style. Increase the package version, rebuild the generated userscript, pass checks, commit `src/` and `dist/`, then publish the tag/Release. Greasy Fork synchronizes the `main` branch raw URL through the GitHub push webhook; the userscript itself does not check for script updates.
 
 ## License
 

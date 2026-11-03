@@ -1,5 +1,16 @@
 // Locale resources are bundled into the userscript; no translation service is used.
-// Add a locale entry with the same message keys to extend the language selector.
+// Add a bundled locale module with the same message keys and register it below.
+import ar from './locales/ar.js';
+import de from './locales/de.js';
+import es from './locales/es.js';
+import fr from './locales/fr.js';
+import hi from './locales/hi.js';
+import id from './locales/id.js';
+import ja from './locales/ja.js';
+import ko from './locales/ko.js';
+import ptBR from './locales/pt-BR.js';
+import ru from './locales/ru.js';
+import zhTW from './locales/zh-TW.js';
 const EN_MESSAGES = {
     title: 'OpenAI Status',
     details: 'OpenAI status details',
@@ -299,7 +310,9 @@ export const LOCALES = {
             'Ads Platform': '广告平台',
             Other: '其他组件'
         }
-    }
+    },
+    'zh-TW': zhTW,
+    es, hi, 'pt-BR': ptBR, ja, ko, fr, de, id, ar, ru
 };
 
 function normalizeLanguage(value) {
@@ -313,7 +326,17 @@ function matchLocale(language) {
     const exact = entries.find(([id, locale]) =>
         normalizeLanguage(id) === normalized || normalizeLanguage(locale.lang) === normalized);
     if (exact) return exact[0];
-    const base = normalized.split('-')[0];
+    const allParts = normalized.split('-');
+    const extensionAt = allParts.findIndex((part,index) => index > 0 && part.length === 1);
+    const parts = extensionAt < 0 ? allParts : allParts.slice(0,extensionAt);
+    const base = parts[0] === 'in' ? 'id' : parts[0];
+    // An explicit Chinese script takes precedence over region, including mixed tags.
+    // Bare zh and all other regions retain Simplified Chinese as the default.
+    if (base === 'zh') {
+        if (parts.includes('hant')) return 'zh-TW';
+        if (parts.includes('hans')) return 'zh-CN';
+        return parts.some(part => ['tw', 'hk', 'mo'].includes(part)) ? 'zh-TW' : 'zh-CN';
+    }
     return entries.find(([, locale]) => normalizeLanguage(locale.lang).split('-')[0] === base)?.[0] || null;
 }
 

@@ -244,6 +244,7 @@ function start() {
   function activityCard(item, maintenance) {
     const box = el('article',`incident ${maintenance ? 'maintenance' : ['major','critical'].includes(item.impact) ? item.impact : ''}`);
     const name = el('div','incident-name');
+    name.dir = 'auto';
     const url = safeStatusUrl(item.url);
     if (url) { const link = el('a','',item.name || t(maintenance ? 'unnamedMaintenance' : 'unnamedIncident'));
       link.href=url; link.target='_blank'; link.rel='noopener noreferrer'; link.dataset.focusKey=`incident-${item.id}`; name.append(link); }
@@ -260,7 +261,14 @@ function start() {
       box.append(el('div','update',schedule.join('\n') || t('scheduleUnknown')));
     }
     const latest = findLatestUpdate(item.incident_updates);
-    if (latest) box.append(el('div','update',`${t('originalUpdate')}: ${latest.body || t('noDetails')}\n${date(latest.display_at || latest.updated_at || latest.created_at)}`));
+    if (latest) {
+      const update = el('div','update');
+      const original = el('div','official-body',latest.body || t('noDetails'));
+      original.dir = 'auto';
+      update.append(el('div','',t('originalUpdate')),original,
+        el('div','',date(latest.display_at || latest.updated_at || latest.created_at)));
+      box.append(update);
+    }
     return box;
   }
 

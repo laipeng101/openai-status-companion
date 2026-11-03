@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { request as requestStatus } from '../src/transport.js';
+import { LOCALES, translate } from '../src/locales.js';
 
 const bundle = readFileSync(new URL('../dist/openai-status-companion.user.js', import.meta.url), 'utf8');
 const HOST_ID = 'openai-status-companion';
@@ -310,4 +311,36 @@ test('native fetch fallback omits credentials and distinguishes response-body ti
         })
     }));
     await assert.rejects(requestStatus('https://status.openai.com/'), (error) => error.code === 'errorTimeout');
+});
+
+test('all bundled languages render and persist in the production bundle without changing status meaning', async (t) => {
+    const app = environment(t, { response: () => successful(official({
+        affected_components: [{component_id:'chat',current_status:'partial_outage'}],
+        ongoing_incidents: [{id:'incident',name:'Elevated errors',status:'monitoring',
+            updates:[{published_at:'2026-11-03T08:00:00Z',message_string:'Recovery is being monitored.'}]}]
+    })) });
+    await app.settle(); app.open();
+    const languageSelect = app.shadow.querySelector('select[name="language"]');
+    assert.equal(languageSelect.options.length, Object.keys(LOCALES).length+1);
+    for (const [id, resource] of Object.entries(LOCALES)) {
+        app.select('language',id); await app.settle();
+        assert.equal(app.host.lang,resource.lang,id);
+        assert.equal(app.host.dir,resource.dir,id);
+        assert.equal(app.saved.get(SETTINGS_KEY).language,id);
+        assert.equal(app.shadow.querySelector('.title').textContent,translate(id,'title'));
+        assert.equal(app.shadow.querySelector('.overall-text').textContent,translate(id,'overall_major'));
+        assert.equal(app.shadow.querySelector('.badge').textContent,translate(id,'component_partial_outage'));
+        assert.equal(app.shadow.querySelector('.official-body').textContent,'Recovery is being monitored.');
+        assert.equal(app.shadow.querySelector('.official-body').dir,'auto');
+        assert.equal(app.shadow.querySelector('.incident-name').dir,'auto');
+        assert.equal(app.activeMenus.size,3);
+        assert.equal([...app.activeMenus.values()][0].name,translate(id,'refresh'));
+    }
+    app.select('language','auto');
+    app.window.document.documentElement.lang='zh-Hant-HK'; await app.settle();
+    assert.equal(app.host.lang,'zh-TW');
+    app.window.document.documentElement.lang='ar-EG'; await app.settle();
+    assert.equal(app.host.dir,'rtl');
+    app.window.document.documentElement.lang='en'; await app.settle();
+    assert.equal(app.host.dir,'ltr');
 });

@@ -4,7 +4,7 @@ The canonical source is `laipeng101/openai-status-companion`. `laipeng101/UserSc
 
 ## GitHub
 
-1. Change `package.json` version, the userscript metadata in `tools/build.mjs`, and `CHANGELOG.md` together.
+1. Change the version in `package.json` and `package-lock.json`, and update `CHANGELOG.md`. The build reads the userscript version from `package.json`.
 2. Run `npm ci` and `npm run check`. Review the generated `.user.js`; it must remain readable and self-contained.
 3. Exercise ChatGPT and Leopard-X / Aizex layouts, narrow/wide screens, theme/language switching, missing/failed data, sidebar expansion/collapse, docking during sidebar motion, sidebar replacement and keyboard controls.
 4. Commit source, tests, lockfile and generated output. Publish the matching tag and GitHub Release after checks pass.
