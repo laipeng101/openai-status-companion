@@ -30,3 +30,5 @@ Tampermonkey などのユーザースクリプト管理ツールをインスト�
 [ソースコード、ドキュメント、問題報告](https://github.com/laipeng101/openai-status-companion)。MIT ライセンスです。このページには、内容を確認できる完全なユーザースクリプトを掲載しています。ソースコードと説明文は GitHub の push Webhook を通じて自動同期します。インストールと更新には Greasy Fork を使用してください。
 
 テストには自動回帰テスト、デスクトップおよび幅 390px の Chrome テスト用ページでの確認、公開ステータスデータを再生した実際の Leopard-X ページでのレイアウト連携確認が含まれます。結果と検証範囲は、リポジトリの[検証ドキュメント](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md)をご覧ください。対応サイトの更新により、レイアウトが変わる場合があります。
+
+[変更履歴](https://github.com/laipeng101/openai-status-companion/blob/main/CHANGELOG.md) · [対応言語](https://github.com/laipeng101/openai-status-companion/blob/main/docs/languages.md)

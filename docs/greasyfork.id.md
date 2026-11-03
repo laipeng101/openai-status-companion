@@ -30,3 +30,5 @@ Permintaan status berupa GET anonim ke `status.openai.com`, tanpa cookie akun. S
 [Kode sumber, dokumentasi, dan pelaporan masalah](https://github.com/laipeng101/openai-status-companion). Lisensi MIT. Skrip pengguna lengkap yang dapat dibaca tersedia di sini; kode sumber dan deskripsi terlokalisasi disinkronkan otomatis melalui webhook push GitHub. Pasang dan perbarui melalui Greasy Fork.
 
 Pengujian mencakup regresi otomatis, pemeriksaan halaman uji di Chrome pada lebar desktop dan 390 px, serta integrasi dengan tata letak Leopard-X yang sebenarnya menggunakan pemutaran ulang data status publik. Lihat [dokumen validasi](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md) repositori untuk hasil dan batas cakupan pengujian. Tata letak dapat berubah seiring perkembangan situs yang didukung.
+
+[Catatan perubahan](https://github.com/laipeng101/openai-status-companion/blob/main/CHANGELOG.md) · [Bahasa yang didukung](https://github.com/laipeng101/openai-status-companion/blob/main/docs/languages.md)

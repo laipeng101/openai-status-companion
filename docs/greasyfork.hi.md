@@ -30,3 +30,5 @@ Tampermonkey जैसे यूज़रस्क्रिप्ट मैन�
 [सोर्स कोड, दस्तावेज़ और समस्या ट्रैकर](https://github.com/laipeng101/openai-status-companion)। MIT लाइसेंस। पूरी और पढ़ने योग्य यूज़रस्क्रिप्ट यहीं उपलब्ध है; सोर्स कोड और स्थानीयकृत विवरण GitHub push webhook के माध्यम से अपने आप सिंक होते हैं। इंस्टॉल और अपडेट Greasy Fork से करें।
 
 जाँच में स्वचालित रिग्रेशन परीक्षण, Chrome में डेस्कटॉप और 390 px चौड़ाई पर परीक्षण पेजों की जाँच, तथा सार्वजनिक स्थिति डेटा के रीप्ले के साथ असली Leopard-X पेज के लेआउट का एकीकरण परीक्षण शामिल हैं। नतीजों और जाँच के दायरे के लिए रिपॉज़िटरी का [सत्यापन दस्तावेज़](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md) देखें। समर्थित साइटों के बदलने पर उनके लेआउट भी बदल सकते हैं।
+
+[बदलावों का विवरण](https://github.com/laipeng101/openai-status-companion/blob/main/CHANGELOG.md) · [समर्थित भाषाएँ](https://github.com/laipeng101/openai-status-companion/blob/main/docs/languages.md)

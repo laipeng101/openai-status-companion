@@ -44,3 +44,5 @@ An explicit supported preference wins. Automatic selection follows the page lang
 2. Import the module and add it to the `LOCALES` registry in `src/locales.js`. Add matching tests for any region or script fallback.
 3. Add localized `@name:<id>` and `@description:<id>` entries in `tools/build.mjs`; update the stated language count and documentation.
 4. Run `npm run check` to rebuild the complete userscript and validate translations. Check long labels, dates, cached/error views, text direction and sidebar placement in ChatGPT and Leopard-X before publishing.
+
+Every supported locale also needs a complete `docs/greasyfork.<id>.md` listing description. Greasy Fork uses `greasyfork.en.md` as its default additional information and one Markdown synchronization row for each of the other 12 locales. Bind each row to the corresponding `main` branch raw URL. After saving the bindings, a push modifying those files must update their localized listing text through the existing webhook. Keep installation, privacy, permissions, supported sites and validation limits equivalent across translations.

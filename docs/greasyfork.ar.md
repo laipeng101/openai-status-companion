@@ -30,3 +30,5 @@
 [الكود المصدري والتوثيق وتتبع المشكلات](https://github.com/laipeng101/openai-status-companion). الترخيص MIT. تُستضاف هنا نسخة السكربت الكاملة والمقروءة؛ ويُزامَن الكود والأوصاف المترجمة تلقائيًا عبر Webhook عند الدفع إلى GitHub. ثبّت السكربت وحدّثه عبر Greasy Fork.
 
 تشمل الاختبارات اختبارات انحدار آلية وفحوص تخطيط في Chrome على سطح المكتب وبعرض 390 بكسل، ودمج التخطيط في موقع Leopard-X الفعلي باستخدام إعادة تشغيل بيانات حالة عامة. راجع [وثيقة التحقق](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md) للاطلاع على النتائج وحدود الاختبار. قد تتغير التخطيطات مع تطور المواقع المدعومة.
+
+[سجل التغييرات](https://github.com/laipeng101/openai-status-companion/blob/main/CHANGELOG.md) · [اللغات المدعومة](https://github.com/laipeng101/openai-status-companion/blob/main/docs/languages.md)

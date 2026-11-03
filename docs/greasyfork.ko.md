@@ -30,3 +30,5 @@ Tampermonkey 등의 사용자 스크립트 관리자를 설치한 후, 페이지
 [소스 코드, 문서, 문제 신고](https://github.com/laipeng101/openai-status-companion). MIT 라이선스를 사용합니다. 이 페이지에는 내용을 확인할 수 있는 완전한 사용자 스크립트가 게시되어 있습니다. 소스 코드와 설명은 GitHub push Webhook을 통해 자동으로 동기화됩니다. 설치와 업데이트는 Greasy Fork를 이용하세요.
 
 테스트에는 자동 회귀 테스트, 데스크톱 및 390px 너비의 Chrome 테스트 페이지 확인, 공개 상태 데이터를 재생한 실제 Leopard-X 페이지의 레이아웃 통합 확인이 포함됩니다. 결과와 검증 범위는 저장소의 [검증 문서](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md)를 확인하세요. 지원 사이트가 변경되면 레이아웃도 달라질 수 있습니다.
+
+[변경 내역](https://github.com/laipeng101/openai-status-companion/blob/main/CHANGELOG.md) · [지원 언어](https://github.com/laipeng101/openai-status-companion/blob/main/docs/languages.md)

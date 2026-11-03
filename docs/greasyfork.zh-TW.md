@@ -30,3 +30,5 @@
 [原始碼、文件與問題回報](https://github.com/laipeng101/openai-status-companion)，採用 MIT 授權條款。本頁保存完整且可讀的使用者腳本；原始碼與說明透過 GitHub push Webhook 自動同步。請透過 Greasy Fork 安裝與更新。
 
 測試涵蓋自動化回歸測試、Chrome 桌面與 390px 窄螢幕測試頁面檢查，以及重播公開狀態資料時的真實 Leopard-X 頁面配置整合驗證。結果與驗證範圍請參閱儲存庫的[驗證文件](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md)。支援網站日後改版時，頁面配置仍可能變動。
+
+[更新日誌](https://github.com/laipeng101/openai-status-companion/blob/main/CHANGELOG.md) · [語言支援](https://github.com/laipeng101/openai-status-companion/blob/main/docs/languages.md)

@@ -30,3 +30,5 @@ Statusabfragen sind anonyme GET-Anfragen an `status.openai.com` ohne Konto-Cooki
 [Quellcode, Dokumentation und Fehlerberichte](https://github.com/laipeng101/openai-status-companion). MIT-Lizenz. Das vollständige, lesbare Userscript wird hier bereitgestellt; Quellcode und lokalisierte Beschreibungen werden automatisch über einen GitHub-Push-Webhook synchronisiert. Installieren und aktualisieren Sie das Skript über Greasy Fork.
 
 Die Tests umfassen automatisierte Regressionstests, Prüfungen mit Testseiten in Chrome bei Desktopbreiten und 390 px Breite sowie die Integration in das echte Leopard-X-Layout mit erneut abgespielten öffentlichen Statusdaten. Ergebnisse und getestete Grenzen finden Sie im [Validierungsdokument](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md) des Repositorys. Die Layouts können sich mit der Weiterentwicklung der unterstützten Websites ändern.
+
+[Änderungsprotokoll](https://github.com/laipeng101/openai-status-companion/blob/main/CHANGELOG.md) · [Unterstützte Sprachen](https://github.com/laipeng101/openai-status-companion/blob/main/docs/languages.md)

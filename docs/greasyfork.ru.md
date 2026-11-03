@@ -30,3 +30,5 @@
 [Исходный код, документация и сообщения о проблемах](https://github.com/laipeng101/openai-status-companion). Лицензия MIT. Здесь размещён полный читаемый скрипт; код и локализованные описания автоматически синхронизируются через Webhook при отправке изменений в GitHub. Устанавливайте и обновляйте скрипт через Greasy Fork.
 
 Проверки включают автоматические регрессионные тесты, тестовые страницы в Chrome на настольном экране и при ширине 390 пикселей, а также интеграцию макета на реальном сайте Leopard-X с воспроизведением общедоступных данных статуса. Результаты и границы проверок приведены в [документе о проверке](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md). Макеты могут меняться по мере развития поддерживаемых сайтов.
+
+[История изменений](https://github.com/laipeng101/openai-status-companion/blob/main/CHANGELOG.md) · [Поддерживаемые языки](https://github.com/laipeng101/openai-status-companion/blob/main/docs/languages.md)

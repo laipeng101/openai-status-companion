@@ -30,3 +30,5 @@ As consultas de status são solicitações GET anônimas para `status.openai.com
 [Código-fonte, documentação e rastreador de problemas](https://github.com/laipeng101/openai-status-companion). Licença MIT. O script completo e legível está hospedado aqui; o código-fonte e as descrições localizadas são sincronizados automaticamente por um webhook de push do GitHub. Instale e atualize pelo Greasy Fork.
 
 Os testes incluem regressões automatizadas, verificações no Chrome com páginas de teste em tamanhos de desktop e de 390 px de largura, além da integração do layout no site real do Leopard-X com reprodução de dados públicos de status. Consulte o [documento de validação](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md) do repositório para ver os resultados e o escopo dos testes. Os layouts podem mudar conforme os sites compatíveis evoluem.
+
+[Histórico de alterações](https://github.com/laipeng101/openai-status-companion/blob/main/CHANGELOG.md) · [Idiomas disponíveis](https://github.com/laipeng101/openai-status-companion/blob/main/docs/languages.md)

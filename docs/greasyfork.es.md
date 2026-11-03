@@ -30,3 +30,5 @@ Las consultas de estado son solicitudes GET anónimas a `status.openai.com`, sin
 [Código fuente, documentación y seguimiento de incidencias](https://github.com/laipeng101/openai-status-companion). Licencia MIT. El script completo y legible está alojado aquí; el código fuente y las descripciones localizadas se sincronizan automáticamente mediante un webhook de push de GitHub. Instala y actualiza a través de Greasy Fork.
 
 Las pruebas incluyen regresiones automatizadas, comprobaciones en Chrome con páginas de prueba en tamaños de escritorio y de 390 px de ancho, e integración del diseño en el sitio real de Leopard-X reproduciendo datos públicos de estado. Consulta el [documento de validación](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md) del repositorio para conocer los resultados y el alcance de las pruebas. El diseño de los sitios compatibles puede cambiar a medida que evolucionan.
+
+[Registro de cambios](https://github.com/laipeng101/openai-status-companion/blob/main/CHANGELOG.md) · [Idiomas disponibles](https://github.com/laipeng101/openai-status-companion/blob/main/docs/languages.md)

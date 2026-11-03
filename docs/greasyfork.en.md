@@ -30,3 +30,5 @@ Status requests are anonymous GETs to `status.openai.com`, without account cooki
 [Source code, documentation and issue tracker](https://github.com/laipeng101/openai-status-companion). MIT license. The complete, readable userscript is hosted here; source and localized descriptions synchronize automatically through a GitHub push webhook. Install and update through Greasy Fork.
 
 Testing includes automated regressions, Chrome fixture checks at desktop and 390px widths, and live Leopard-X layout integration using replayed public status data. See the repository's [validation document](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md) for results and tested boundaries. Layouts may change as the supported sites evolve.
+
+[Changelog](https://github.com/laipeng101/openai-status-companion/blob/main/CHANGELOG.md) · [Language coverage](https://github.com/laipeng101/openai-status-companion/blob/main/docs/languages.md)
