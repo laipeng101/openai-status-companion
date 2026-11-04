@@ -1,24 +1,26 @@
 # Interface languages
 
-Version 2.1.0 provides 13 interface languages. Language resources are bundled into the userscript; official incident titles and updates remain in their original language.
+Language resources are bundled into the userscript. Official incident titles and updates remain in their original language.
 
-| Locale | Interface language |
-| --- | --- |
-| `en` | English |
-| `zh-CN` | Simplified Chinese — 简体中文 |
-| `zh-TW` | Traditional Chinese — 繁體中文 |
-| `es` | Spanish — Español |
-| `hi` | Hindi — हिन्दी |
-| `pt-BR` | Brazilian Portuguese — Português (Brasil) |
-| `ja` | Japanese — 日本語 |
-| `ko` | Korean — 한국어 |
-| `fr` | French — Français |
-| `de` | German — Deutsch |
-| `id` | Indonesian — Bahasa Indonesia |
-| `ar` | Arabic — العربية |
-| `ru` | Russian — Русский |
+<!-- locale-table:start -->
+The userscript ships with **13 interface languages**.
 
-Arabic uses right-to-left layout. The other bundled languages use left-to-right layout.
+| Locale | Interface language | Direction |
+| --- | --- | --- |
+| `en` | English | `ltr` |
+| `zh-CN` | 简体中文 | `ltr` |
+| `zh-TW` | 繁體中文 | `ltr` |
+| `es` | Español | `ltr` |
+| `hi` | हिन्दी | `ltr` |
+| `pt-BR` | Português (Brasil) | `ltr` |
+| `ja` | 日本語 | `ltr` |
+| `ko` | 한국어 | `ltr` |
+| `fr` | Français | `ltr` |
+| `de` | Deutsch | `ltr` |
+| `id` | Bahasa Indonesia | `ltr` |
+| `ar` | العربية | `rtl` |
+| `ru` | Русский | `ltr` |
+<!-- locale-table:end -->
 
 ## Selection basis
 
@@ -40,9 +42,16 @@ An explicit supported preference wins. Automatic selection follows the page lang
 
 ## Adding a language
 
-1. Create `src/locales/<id>.js` with a default export containing `label`, `lang`, `dir`, `messages`, `componentNames` and `groupNames`. Use a native-language label and the appropriate BCP 47 locale ID. Translate every English message key from `src/locales.js`, preserving placeholder names and counts. Retain branded product/API names; translate generic feature labels consistently. Unchanged component and group names may use the original-name fallback.
-2. Import the module and add it to the `LOCALES` registry in `src/locales.js`. Add matching tests for any region or script fallback.
-3. Add localized `@name:<id>` and `@description:<id>` entries in `tools/build.mjs`; update the stated language count and documentation.
-4. Run `npm run check` to rebuild the complete userscript and validate translations. Check long labels, dates, cached/error views, text direction and sidebar placement in ChatGPT and Leopard-X before publishing.
+1. Create `src/locales/<id>.js` using the same BCP 47 ID for the filename and `lang`. The default export contains `label`, `lang`, `dir`, `messages`, `componentNames` and `groupNames`. Use a native-language label and translate every message key from `src/locales/en.js`, preserving placeholder names and counts. The templates control the order and punctuation of dynamic text. Unmapped component and group names keep their official wording.
+2. Export a named `userscript` object in the same file with a single-line `name` and `description`. Include `{languageCount}` in the description where the total should appear.
+3. Import the pack and add it to the ordered list in `src/locales/index.js`. This list drives the language menu, script metadata and the generated table above. Its order also determines the default variant when a language has multiple packs.
+4. Write `docs/greasyfork.<id>.md` and run `npm run check`. Commit the regenerated userscript and language table with the source. Check long labels, dates, cached and error views, text direction and sidebar placement before publishing.
 
-Every supported locale also needs a complete `docs/greasyfork.<id>.md` listing description. Greasy Fork uses `greasyfork.en.md` as its default additional information and one Markdown synchronization row for each of the other 12 locales. Bind each row to the corresponding `main` branch raw URL. After saving the bindings, a push modifying those files must update their localized listing text through the existing webhook. Keep installation, privacy, permissions, supported sites and validation limits equivalent across translations.
+Greasy Fork uses `greasyfork.en.md` as its default additional information. Each other language has a Markdown file and a synchronization binding to its `main` branch raw URL. See the [publishing guide](publishing.md) for setting up the binding. Keep installation, privacy, permissions, supported sites and validation limits equivalent across translations.
+
+## Reviewing translations
+
+- Read the text in the panel, tooltip or menu where it appears. Use everyday terms for service problems, maintenance and saved data. Explain what users can see or do when data is missing or a refresh fails.
+- Check that each label preserves the distinctions the script makes between a slowdown, a partial outage and a major outage, and between an empty list and missing information.
+- Use established product names from OpenAI’s localized interface or help center. Keep the official name when the localized name is unclear. Leave incident titles and updates in their original language.
+- Review the userscript metadata and Greasy Fork description alongside the interface. Check their claims about refresh timing, layout and data access against the current implementation.

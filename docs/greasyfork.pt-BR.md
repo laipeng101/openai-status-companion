@@ -8,14 +8,14 @@ Consulte o status oficial dos serviços da OpenAI sem sair do chat. Este script 
 - `leopard-x.memofun.net`
 - `mana-x.aizex.net`
 
-## O que ele mostra
+## Recursos
 
-- No modo de posição automática, um botão compacto de status fica ao lado da barra lateral esquerda e acompanha sua expansão, recolhimento ou mudança de largura. Em janelas estreitas, o botão permanece em um canto e o painel fica dentro da área visível.
-- Grupos oficiais de componentes, incidentes atuais, manutenção programada e o horário da última obtenção bem-sucedida dos dados.
-- 13 idiomas de interface: inglês, chinês simplificado, chinês tradicional, espanhol, hindi, português do Brasil, japonês, coreano, francês, alemão, indonésio, árabe e russo. Inclui detecção automática pelo idioma da página ou do navegador e seleção manual. O árabe usa um layout da direita para a esquerda. Os títulos e as mensagens oficiais dos incidentes permanecem no idioma original; nenhum serviço de tradução é usado.
-- O tema claro ou escuro pode acompanhar o site. Também há controles manuais de tema e canto, acesso pelo teclado e fechamento com Escape.
+- Com a posição automática, o botão de status acompanha a barra lateral esquerda. O botão, o painel e os avisos mudam de lugar para evitar menus, campos de texto e outros controles. Se faltar espaço, podem ficar ocultos temporariamente.
+- Veja os componentes por grupo, os incidentes em andamento, a manutenção programada e o horário da última atualização bem-sucedida.
+- Escolha o [idioma da interface](https://github.com/laipeng101/openai-status-companion/blob/main/docs/languages.md) ou deixe o script seguir o idioma da página ou do navegador. Os títulos e as mensagens oficiais dos incidentes são exibidos no idioma original.
+- O tema pode acompanhar o do site. Você também pode escolher o tema e o canto da tela, navegar pelo teclado e fechar o painel com Esc.
 - O status é atualizado a cada 60 segundos enquanto a página está visível; as consultas periódicas são pausadas em segundo plano. As solicitações têm tempo limite de 15 segundos. Se uma atualização falhar, os dados em cache são mantidos e identificados claramente.
-- Dados de compatibilidade incompletos são marcados explicitamente como não verificados, em vez de serem exibidos como uma confirmação de que tudo está funcionando normalmente.
+- Se o script usar a API antiga, as seções cujos dados não puderam ser conferidos serão marcadas como não verificadas.
 
 ## Instalação e uso
 
@@ -23,12 +23,12 @@ Instale um gerenciador de scripts de usuário, como o Tampermonkey, e clique em 
 
 ## Privacidade e permissões
 
-As consultas de status são solicitações GET anônimas para `status.openai.com`, sem cookies de conta. O script verifica a geometria da barra lateral e os atributos de idioma e tema da página; não lê nem envia prompts, conversas ou tokens de conta. Apenas suas preferências e um identificador para evitar avisos de status duplicados são salvos localmente. Não inclui análise de uso, anúncios, dependências executáveis remotas nem serviços de tradução de terceiros.
+O script envia solicitações GET anônimas a `status.openai.com` sem cookies da conta. Ele verifica a posição, o tamanho e a visibilidade dos elementos da página e consulta o idioma e o tema. Ele não lê nem envia prompts, conversas ou tokens da conta. Suas preferências e um registro que evita avisos duplicados são salvos no dispositivo. O script não inclui rastreamento de uso, anúncios, código executável remoto nem serviços de tradução de terceiros.
 
 ## Código-fonte e suporte
 
 [Código-fonte, documentação e rastreador de problemas](https://github.com/laipeng101/openai-status-companion). Licença MIT. O script completo e legível está hospedado aqui; o código-fonte e as descrições localizadas são sincronizados automaticamente por um webhook de push do GitHub. Instale e atualize pelo Greasy Fork.
 
-Os testes incluem regressões automatizadas, verificações no Chrome com páginas de teste em tamanhos de desktop e de 390 px de largura, além da integração do layout no site real do Leopard-X com reprodução de dados públicos de status. Consulte o [documento de validação](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md) do repositório para ver os resultados e o escopo dos testes. Os layouts podem mudar conforme os sites compatíveis evoluem.
+Os testes incluem verificações automatizadas e verificações de layout no Chrome com uma página de teste local em telas de computador e com 390 px de largura. Também houve verificações no Leopard-X com dados públicos de status coletados anteriormente. Consulte os resultados e o escopo dos testes no [documento de validação](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md). Alterações nos sites podem afetar a posição do botão e do painel.
 
 [Histórico de alterações](https://github.com/laipeng101/openai-status-companion/blob/main/CHANGELOG.md) · [Idiomas disponíveis](https://github.com/laipeng101/openai-status-companion/blob/main/docs/languages.md)

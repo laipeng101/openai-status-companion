@@ -7,11 +7,11 @@ A small, independent userscript that displays official OpenAI service status on 
 ## Features
 
 - The launcher follows the left sidebar in automatic mode. Left and right corner preferences are also available. The launcher, details and notices move away from native menus, the composer and other visible controls, and temporarily hide if no clear space fits.
-- Official component groups, active incidents, scheduled maintenance and local fetch time. Incident titles and update bodies remain the original official text.
-- 13 interface languages: English, Simplified and Traditional Chinese, Spanish, Hindi, Brazilian Portuguese, Japanese, Korean, French, German, Indonesian, Arabic and Russian. Automatic page/browser detection and a persistent language selector are included.
+- See service components by group, open incidents, scheduled maintenance and when status data was last checked in your local time. Incident titles and updates appear in their original language.
+- Choose an interface language or let the script follow the page or browser language. The script saves your selection. [Supported languages](docs/languages.md)
 - Website theme detection, explicit light/dark options, Shadow DOM isolation, keyboard controls and reduced-motion support.
-- Refreshes every 60 seconds while visible. Background tabs pause polling; returning to a tab can refresh old data. Requests have a 15-second timeout.
-- Failed refreshes keep the last successful data, clearly marked as cached. A partially available compatibility feed is never presented as a verified all-clear.
+- Status updates every 60 seconds while the page is visible. Updates pause in the background and resume when you return. Requests time out after 15 seconds.
+- If a refresh fails, the panel labels the last available data as cached. When the script uses the legacy status API, it marks any sections it cannot verify.
 
 ## Install and use
 
@@ -21,7 +21,7 @@ Install from [Greasy Fork](https://greasyfork.org/en/scripts/603564-openai-statu
 
 All status requests go to `https://status.openai.com/`, anonymously and without cookies. The current official page is parsed as inert JSON data; its scripts are never executed. The legacy JSON endpoints are a fallback and carry section-by-section verification labels. Only official `status.openai.com` incident links are clickable.
 
-The script checks page geometry and theme and language attributes. It does not read or transmit conversations, prompts, account tokens or page text. Language/theme/position preferences are saved in userscript-manager storage; a status-notice fingerprint is saved in session storage. There are no analytics, ads, remote executable dependencies or translation services. Official incident text is not machine-translated.
+The script checks the position, size and visibility of page elements and reads the page’s theme and language settings. It does not read or transmit conversations, prompts, account tokens or page text. Language, theme and position preferences are saved in userscript-manager storage. A record that prevents duplicate notices is saved in the current tab’s session storage. The script contains no analytics, ads, remote executable code or translation services.
 
 Official status reports aggregate availability; they cannot establish availability for an individual account, model or third-party service.
 
@@ -39,7 +39,7 @@ npm run preview
 
 ### Add a language
 
-Add a module under `src/locales/` and register it in `src/locales.js` with `label`, `lang`, `dir`, `messages`, `componentNames` and `groupNames`. Copy all English message keys and preserve `{placeholders}`; missing keys fall back to English. Add localized userscript metadata in `tools/build.mjs`, update the listing description, run checks, and inspect narrow layouts. Arabic uses `dir: 'rtl'`; official incident text keeps its own direction. See [language coverage and selection](docs/languages.md) for regional matching and expansion priorities.
+Create a language pack in `src/locales/` and register it in `src/locales/index.js`. The build uses the registry and pack metadata to generate the userscript header and language table. See the [language guide](docs/languages.md#adding-a-language) for the pack format, listing description and validation steps.
 
 ## Release
 

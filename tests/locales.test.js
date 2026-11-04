@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LOCALES, resolveLocale, translate, translateComponent, translateGroup } from '../src/locales.js';
+import { LOCALES, hasMessage, resolveLocale, translate, translateComponent, translateGroup } from '../src/locales.js';
 
 const placeholders = (message) => [...message.matchAll(/\{([A-Za-z][A-Za-z0-9_]*)\}/g)]
     .map((match) => match[1]).sort();
@@ -45,6 +45,9 @@ test('translation interpolates zero and preserves unresolved placeholders', () =
 });
 
 test('missing locale and missing message fall back without inherited object properties', () => {
+    assert.equal(hasMessage('refresh'), true);
+    assert.equal(hasMessage('constructor'), false);
+    assert.equal(hasMessage('__proto__'), false);
     assert.equal(translate('zz', 'refresh'), 'Refresh now');
     assert.equal(translate('en-US', 'refresh'), 'Refresh now');
     assert.equal(translate('zh-TW', 'refresh'), '立即重新整理');
@@ -72,6 +75,10 @@ test('official proper names remain intact and unknown component names are preser
     assert.equal(translateComponent('en', 'Login'), 'Login');
     assert.equal(translateComponent('zh-CN', 'Login'), '登录');
     assert.equal(translateComponent('zh-CN', 'ChatGPT Work'), 'ChatGPT Work');
+    assert.equal(translateComponent('zh-CN', 'Space'), '资料空间');
+    assert.equal(translateComponent('zh-TW', 'Space'), '空間');
+    assert.equal(translateComponent('ar', 'Space'), 'Space');
+    assert.equal(translateComponent('ru', 'Space'), 'Space');
     assert.equal(translateComponent('zh-CN', 'Future Service'), 'Future Service');
     assert.equal(translateComponent('zh-CN', ''), '未知组件');
     assert.equal(translateComponent('en', null), 'Unknown component');
@@ -106,5 +113,19 @@ test('every bundled language preserves unrecognized official component and group
             assert.equal(translateComponent(id, name), name, `${id}.${name}`);
         }
         assert.equal(translateGroup(id, 'Future Group'), 'Future Group', id);
+    }
+});
+
+test('registered regional variants still match with language-tag extensions or legacy aliases', () => {
+    LOCALES['pt-PT'] = { ...LOCALES['pt-BR'], lang: 'pt-PT' };
+    LOCALES['id-ID'] = { ...LOCALES.id, lang: 'id-ID' };
+    try {
+        assert.equal(resolveLocale('auto', 'pt-PT-u-nu-latn'), 'pt-PT');
+        assert.equal(resolveLocale('auto', 'pt-PT-x-private'), 'pt-PT');
+        assert.equal(resolveLocale('auto', 'pt-AO-u-nu-latn'), 'pt-BR');
+        assert.equal(resolveLocale('auto', 'in-ID-x-private'), 'id-ID');
+    } finally {
+        delete LOCALES['pt-PT'];
+        delete LOCALES['id-ID'];
     }
 });

@@ -10,12 +10,12 @@ See official OpenAI service status without leaving your chat. This independent u
 
 ## What it shows
 
-- In automatic position mode, a compact status launcher docks beside the left sidebar and follows it as it expands, collapses or changes width. At narrow widths the launcher stays in a corner and the panel is bounded by the viewport.
-- Official component groups, current incidents, scheduled maintenance and the last successful fetch time.
-- 13 interface languages: English, Simplified and Traditional Chinese, Spanish, Hindi, Brazilian Portuguese, Japanese, Korean, French, German, Indonesian, Arabic and Russian. Automatic page/browser detection and a manual selector are included. Arabic uses a right-to-left layout. Official incident titles and messages remain in their original language; there is no translation service.
-- Website light/dark theme following, manual theme and corner controls, keyboard access and Escape to close.
-- Visible pages refresh every 60 seconds; background polling pauses. Requests time out after 15 seconds. Failed refreshes retain clearly marked cached data.
-- Incomplete compatibility data is explicitly marked unverified rather than being displayed as a verified all-clear.
+- With automatic positioning, the status button follows the left sidebar. The button, panel and notices move away from menus, text inputs and other controls, and can hide temporarily if there’s no room.
+- See service components by group, open incidents, scheduled maintenance and when status data was last fetched successfully.
+- Choose an [interface language](https://github.com/laipeng101/openai-status-companion/blob/main/docs/languages.md) or let the script follow the page or browser language. Official incident titles and messages appear in their original language.
+- The script can follow the site's light or dark theme. You can also choose a theme and a screen corner. Use the keyboard to navigate and Esc to close the panel.
+- Status data updates every 60 seconds while the page is visible. Updates pause in the background. Requests time out after 15 seconds. If a refresh fails, the panel labels the last available data as cached.
+- If the script uses the legacy status API, sections whose data could not be checked are marked unverified.
 
 ## Install and use
 
@@ -23,12 +23,12 @@ Install a userscript manager such as Tampermonkey, then use **Install this scrip
 
 ## Privacy and permissions
 
-Status requests are anonymous GETs to `status.openai.com`, without account cookies. The script inspects sidebar geometry plus page language/theme attributes; it does not read or upload prompts, conversations or account tokens. Only its preferences and a status-notice fingerprint are saved locally. No analytics, ads, remote executable dependencies or third-party translation services are included.
+The script sends anonymous GET requests to `status.openai.com` without account cookies. It checks the position, size and visibility of page elements and reads the page’s language and theme settings. It never reads or uploads prompts, conversations or account tokens. Your settings and a record used to prevent duplicate notices are saved locally. The script contains no analytics, ads, remote executable code or third-party translation services.
 
 ## Source and support
 
 [Source code, documentation and issue tracker](https://github.com/laipeng101/openai-status-companion). MIT license. The complete, readable userscript is hosted here; source and localized descriptions synchronize automatically through a GitHub push webhook. Install and update through Greasy Fork.
 
-Testing includes automated regressions, Chrome fixture checks at desktop and 390px widths, and live Leopard-X layout integration using replayed public status data. See the repository's [validation document](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md) for results and tested boundaries. Layouts may change as the supported sites evolve.
+Tests include automated checks, Chrome layout checks on a local test page at desktop and 390 px widths, and layout checks on Leopard-X using previously captured public status data. The repository’s [validation notes](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md) describe the test results and their limits. Site updates can affect placement.
 
 [Changelog](https://github.com/laipeng101/openai-status-companion/blob/main/CHANGELOG.md) · [Language coverage](https://github.com/laipeng101/openai-status-companion/blob/main/docs/languages.md)

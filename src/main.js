@@ -1,6 +1,6 @@
 import {STATUS_URL, parseOfficialPage, normalizeOfficialSummary, normalizeCompatibility,
   getOverall, getComponentStatus, findLatestUpdate, validateResponse, safeStatusUrl} from './status-core.js';
-import {LOCALES, resolveLocale, translate, translateComponent, translateGroup} from './locales.js';
+import {LOCALES, hasMessage, resolveLocale, translate, translateComponent, translateGroup} from './locales.js';
 import {ADAPTERS, adapterFor, chooseSidebar, calculatePlacement, findClearPosition, CLEARANCE} from './layout.js';
 import {createSidebarTracker, visibleSidebarRect} from './sidebar.js';
 import {createObstructionTracker} from './obstructions.js';
@@ -119,7 +119,7 @@ function start() {
     return button;
   }
   function errorText() {
-    return t(error?.code && LOCALES.en.messages[error.code] ? error.code : 'unknownError', {status:error?.status});
+    return t(hasMessage(error?.code) ? error.code : 'unknownError', {status:error?.status});
   }
   function setExpanded(next) {
     expanded = Boolean(next);
@@ -151,7 +151,7 @@ function start() {
     }
     const overall = getOverall(data?.status.indicator || 'unknown');
     const label = data ? t(overall.shortKey) : loading ? t('loading') : t('unknown');
-    const launcherLabel = error && data ? `${label} · ${t('cached')}` : label;
+    const launcherLabel = error && data ? t('cachedStatus', {status:label}) : label;
     if (launcherText.textContent !== launcherLabel) launcherText.textContent = launcherLabel;
     launcher.dataset.tone = data ? overall.tone : 'muted';
     launcher.classList.toggle('stale', Boolean(error && data));
@@ -199,7 +199,9 @@ function start() {
       const groups = el('div','groups');
       const byId = new Map(data.components.map(item => [item.id,item]));
       for (const group of data.component_groups) {
-        groups.append(el('div','group-name',`${translateGroup(locale,group.name)} · ${group.component_ids.length}`));
+        groups.append(el('div','group-name',t('componentGroup', {
+          group:translateGroup(locale,group.name), count:group.component_ids.length
+        })));
         const list = el('div','list');
         group.component_ids.forEach(id => { if (byId.has(id)) list.append(component(byId.get(id))); });
         groups.append(list);
@@ -254,15 +256,15 @@ function start() {
       link.href=url; link.target='_blank'; link.rel='noopener noreferrer'; link.dataset.focusKey=`incident-${item.id}`; name.append(link); }
     else name.textContent = item.name || t(maintenance ? 'unnamedMaintenance' : 'unnamedIncident');
     const statusKey = `${maintenance ? 'maintenance' : 'incident'}_${item.status}`;
-    const status = LOCALES.en.messages[statusKey] ? t(statusKey) : item.status || t('component_unknown');
+    const status = hasMessage(statusKey) ? t(statusKey) : item.status || t('component_unknown');
     const impactKey = `impact_${item.impact}`;
-    const impact = LOCALES.en.messages[impactKey] ? t(impactKey) : t('impact_unknown');
+    const impact = hasMessage(impactKey) ? t(impactKey) : t('impact_unknown');
     box.append(name,el('div','meta',t(maintenance ? 'maintenanceStage' : 'statusAndImpact',{status,impact})));
     if (maintenance) {
-      const schedule = [];
-      if (item.scheduled_for) schedule.push(t('scheduleStart',{time:date(item.scheduled_for)}));
-      if (item.scheduled_until) schedule.push(t('scheduleEnd',{time:date(item.scheduled_until)}));
-      box.append(el('div','update',schedule.join('\n') || t('scheduleUnknown')));
+      const start = item.scheduled_for ? t('scheduleStart',{time:date(item.scheduled_for)}) : '';
+      const end = item.scheduled_until ? t('scheduleEnd',{time:date(item.scheduled_until)}) : '';
+      const schedule = start && end ? t('scheduleRange',{start,end}) : start || end || t('scheduleUnknown');
+      box.append(el('div','update',schedule));
     }
     const latest = findLatestUpdate(item.incident_updates);
     if (latest) {
@@ -301,7 +303,7 @@ function start() {
     try { sessionStorage.setItem(NOTICE_KEY,next); } catch { /* Display does not depend on storage. */ }
     const overall=getOverall(data.status.indicator);
     if (expanded || (!previous && overall.level===0)) return;
-    showToast(`${t(previous ? 'noticeUpdated' : 'noticeInitial')}: ${t(overall.key)}`,overall.tone);
+    showToast(t(previous ? 'noticeUpdated' : 'noticeInitial', {status:t(overall.key)}),overall.tone);
   }
   function showToast(message,tone) {
     clearTimeout(toastTimer); shadow.querySelector('.toast')?.remove();

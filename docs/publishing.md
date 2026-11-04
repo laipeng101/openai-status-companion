@@ -15,7 +15,7 @@ Import the branch-based raw URL:
 
 `https://raw.githubusercontent.com/laipeng101/openai-status-companion/main/dist/openai-status-companion.user.js`
 
-Choose JavaScript and English as the default metadata language. Use `docs/greasyfork.en.md` for default additional information; supply a localized `docs/greasyfork.<locale>.md` for every other supported UI locale. All descriptions use Markdown and `main` branch raw URLs. There are 13 descriptions: default English plus `zh-CN`, `zh-TW`, `es`, `hi`, `pt-BR`, `ja`, `ko`, `fr`, `de`, `id`, `ar` and `ru`. Verify author, version, MIT license, supported sites and rendered descriptions on the public listing. The imported code must contain the whole script. Keep installation links pointed at Greasy Fork so its update history and checks remain authoritative.
+Choose JavaScript and English as the default metadata language. Use `docs/greasyfork.en.md` for default additional information. Bind a localized `docs/greasyfork.<locale>.md` for each remaining entry in the [language table](languages.md). All descriptions use Markdown and `main` branch raw URLs. Verify author, version, MIT license, supported sites and rendered descriptions on the public listing. The imported code must contain the whole script. Keep installation links pointed at Greasy Fork so its update history and checks remain authoritative.
 
 An active GitHub push webhook is configured for this repository, using Greasy Fork's account-specific HTTPS endpoint, JSON payloads, the existing signing secret and enabled TLS certificate verification. The script and all localized description URLs follow `main`.
 

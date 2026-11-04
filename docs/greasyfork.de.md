@@ -10,12 +10,12 @@ Sehen Sie den offiziellen Dienststatus von OpenAI, ohne Ihren Chat zu verlassen.
 
 ## Anzeige und Funktionen
 
-- Bei automatischer Positionierung dockt eine kompakte Statusschaltfläche neben der linken Seitenleiste an und folgt ihr beim Aufklappen, Zuklappen und Ändern der Breite. In schmalen Fenstern bleibt die Schaltfläche in einer Ecke; das Panel bleibt innerhalb des sichtbaren Bereichs.
-- Offizielle Komponentengruppen, laufende Vorfälle, geplante Wartungen und der Zeitpunkt des letzten erfolgreichen Abrufs.
-- 13 Oberflächensprachen: Englisch, vereinfachtes und traditionelles Chinesisch, Spanisch, Hindi, brasilianisches Portugiesisch, Japanisch, Koreanisch, Französisch, Deutsch, Indonesisch, Arabisch und Russisch. Die Seiten- oder Browsersprache wird automatisch erkannt; eine manuelle Auswahl ist ebenfalls vorhanden. Arabisch verwendet ein Layout von rechts nach links. Offizielle Vorfalltitel und Meldungen bleiben in ihrer Originalsprache; es wird kein Übersetzungsdienst verwendet.
-- Übernahme des hellen oder dunklen Website-Designs, manuelle Auswahl von Design und Ecke, Tastaturbedienung und Schließen mit Escape.
-- Sichtbare Seiten werden alle 60 Sekunden aktualisiert; regelmäßige Abfragen im Hintergrund pausieren. Anfragen haben ein Zeitlimit von 15 Sekunden. Bei fehlgeschlagenen Aktualisierungen bleiben Daten im Cache erhalten und werden deutlich gekennzeichnet.
-- Unvollständige Kompatibilitätsdaten werden ausdrücklich als ungeprüft markiert und nicht als geprüfte Entwarnung angezeigt.
+- Bei automatischer Positionierung folgt die Statusschaltfläche der linken Seitenleiste. Schaltfläche, Statusfenster und Hinweise weichen Menüs, Eingabefeldern und anderen Bedienelementen aus. Bei Platzmangel werden sie vorübergehend ausgeblendet.
+- Zeigt Komponenten nach Gruppen, aktuelle Störungen, geplante Wartungen und den Zeitpunkt der letzten erfolgreichen Aktualisierung.
+- Wählen Sie die [Sprache der Oberfläche](https://github.com/laipeng101/openai-status-companion/blob/main/docs/languages.md) selbst oder übernehmen Sie die Sprache der Seite oder des Browsers. Titel und Meldungen zu Störungen erscheinen im offiziellen Wortlaut.
+- Das Skript kann das helle oder dunkle Design der Website übernehmen. Sie können das Design und die Bildschirmecke auch selbst wählen. Die Bedienung per Tastatur ist möglich. Esc schließt das Statusfenster.
+- Der Status wird alle 60 Sekunden aktualisiert, solange die Seite sichtbar ist. Im Hintergrund pausieren die Abfragen. Anfragen haben ein Zeitlimit von 15 Sekunden. Schlägt die Aktualisierung fehl, zeigt das Statusfenster die letzten verfügbaren Daten mit einem Hinweis an.
+- Wenn das Skript die ältere Status-API verwendet, kennzeichnet es Abschnitte, deren Daten nicht geprüft werden konnten.
 
 ## Installation und Verwendung
 
@@ -23,12 +23,12 @@ Installieren Sie einen Userscript-Manager wie Tampermonkey und klicken Sie oben 
 
 ## Datenschutz und Berechtigungen
 
-Statusabfragen sind anonyme GET-Anfragen an `status.openai.com` ohne Konto-Cookies. Das Skript prüft die Geometrie der Seitenleiste sowie die Sprach- und Designattribute der Seite. Es liest oder überträgt keine Prompts, Unterhaltungen oder Konto-Tokens. Nur die Einstellungen und eine Kennung zur Erkennung von Statusmeldungen werden lokal gespeichert. Es enthält keine Nutzungsanalyse, Werbung, entfernten ausführbaren Abhängigkeiten oder Übersetzungsdienste von Drittanbietern.
+Das Skript sendet anonyme GET-Anfragen an `status.openai.com` ohne Konto-Cookies. Es prüft Position, Größe und Sichtbarkeit von Seitenelementen sowie die Sprach- und Designeinstellungen der Seite. Es liest oder überträgt keine Eingaben, Unterhaltungen oder Konto-Tokens. Einstellungen und ein Eintrag zur Vermeidung doppelter Hinweise werden lokal gespeichert. Das Skript enthält keine Nutzungsverfolgung, Werbung, extern geladenen ausführbaren Code oder Übersetzungsdienste von Drittanbietern.
 
 ## Quellcode und Support
 
 [Quellcode, Dokumentation und Fehlerberichte](https://github.com/laipeng101/openai-status-companion). MIT-Lizenz. Das vollständige, lesbare Userscript wird hier bereitgestellt; Quellcode und lokalisierte Beschreibungen werden automatisch über einen GitHub-Push-Webhook synchronisiert. Installieren und aktualisieren Sie das Skript über Greasy Fork.
 
-Die Tests umfassen automatisierte Regressionstests, Prüfungen mit Testseiten in Chrome bei Desktopbreiten und 390 px Breite sowie die Integration in das echte Leopard-X-Layout mit erneut abgespielten öffentlichen Statusdaten. Ergebnisse und getestete Grenzen finden Sie im [Validierungsdokument](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md) des Repositorys. Die Layouts können sich mit der Weiterentwicklung der unterstützten Websites ändern.
+Zusätzlich zu automatisierten Tests wurde die Platzierung in Chrome auf einer lokalen Testseite bei Desktopbreite und bei 390 px geprüft. Auf Leopard-X kamen zuvor erfasste öffentliche Statusdaten zum Einsatz. Ergebnisse und Testumfang stehen im [Validierungsdokument](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md). Änderungen an den Websites können die Platzierung beeinflussen.
 
 [Änderungsprotokoll](https://github.com/laipeng101/openai-status-companion/blob/main/CHANGELOG.md) · [Unterstützte Sprachen](https://github.com/laipeng101/openai-status-companion/blob/main/docs/languages.md)

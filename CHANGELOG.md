@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.2 — 2026-11-05
+
+- Revise interface text, script descriptions and installation instructions across all 13 languages. Clarify service incidents, cached data and sections that could not be verified when using the legacy status API.
+- Give every language its own pack, including English and Simplified Chinese. Let each pack control wording, order and punctuation for status notices, cached labels, component groups and maintenance times.
+- Generate localized script metadata and the supported-language table from the same registry. Match registered regional variants when a language tag includes extensions or a legacy alias.
+
 ## 2.1.1 — 2026-11-04
 
 - Move the status button, details and notices away from native menus, including ChatGPT's account and usage menus, and from the composer and other page controls.

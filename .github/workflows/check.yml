@@ -16,5 +16,5 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
-      - name: Verify committed userscript matches source
-        run: git diff --exit-code -- dist/
+      - name: Verify committed userscript and language table match source
+        run: git diff --exit-code -- dist/ docs/languages.md

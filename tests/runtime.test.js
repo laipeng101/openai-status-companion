@@ -138,9 +138,10 @@ test('compatibility fallback labels missing event arrays unverified instead of h
         : { status: 200, response: payload } });
     await app.settle(); app.open();
     assert.equal(app.shadow.querySelector('.launcher').textContent, 'Status unknown');
-    assert.equal(app.shadow.querySelector('.subtitle').textContent, 'Compatibility data from status.openai.com');
+    assert.equal(app.shadow.querySelector('.subtitle').textContent, 'Source: status.openai.com (legacy API)');
+    assert.match(app.shadow.querySelector('.activity').previousElementSibling.textContent, /Some data unverified/);
     assert.deepEqual([...app.shadow.querySelectorAll('.activity-value')].map((item) => item.textContent), ['Unverified', 'Unverified']);
-    assert.match(app.shadow.querySelector('.note').textContent, /Compatibility data/);
+    assert.match(app.shadow.querySelector('.note').textContent, /legacy status API.*Some sections may be incomplete/);
 });
 
 test('later network failure preserves cached data and displays the failed refresh honestly', async (t) => {
@@ -152,13 +153,15 @@ test('later network failure preserves cached data and displays the failed refres
     assert.equal(app.shadow.querySelector('.launcher').classList.contains('stale'), true);
     assert.match(app.shadow.querySelector('.launcher').textContent, /cached/);
     assert.match(app.shadow.querySelector('.note').textContent, /Refresh failed.*Could not connect/);
-    assert.match(app.shadow.querySelector('.overall .meta:last-child').textContent, /Last successful fetch/);
+    assert.match(app.shadow.querySelector('.overall .meta:last-child').textContent, /Last successful check/);
+    app.select('language', 'zh-CN');
+    assert.equal(app.shadow.querySelector('.launcher').textContent, 'OpenAI 正常（缓存）');
 });
 
 test('request timeout becomes a localized error and loading state always clears', async (t) => {
     const app = environment(t, { lang: 'zh-CN', response: () => ({ timeout: true }) });
     await app.settle(); app.open();
-    assert.match(app.shadow.querySelector('.error').textContent, /请求官方状态超时/);
+    assert.match(app.shadow.querySelector('.error').textContent, /获取官方状态超时/);
     assert.equal(app.shadow.querySelector('.launcher').classList.contains('loading'), false);
     assert.equal(app.shadow.querySelector('.actions button:nth-child(2)').disabled, false);
 });
@@ -172,7 +175,7 @@ test('language, theme and position preferences override website settings and per
     await app.settle();
     assert.equal(app.host.lang, 'zh-CN'); assert.equal(app.host.dir, 'ltr');
     assert.equal(app.host.dataset.theme, 'dark');
-    assert.match(app.shadow.querySelector('.title').textContent, /官方状态/);
+    assert.equal(app.shadow.querySelector('.title').textContent, 'OpenAI 服务状态');
     assert.deepEqual(app.saved.get(SETTINGS_KEY), { language: 'zh-CN', theme: 'dark', position: 'right' });
 });
 
@@ -182,7 +185,7 @@ test('auto language and theme react to page changes while explicit language stay
     app.window.document.documentElement.lang = 'zh-CN';
     app.window.document.documentElement.className = 'dark'; await app.settle();
     assert.equal(app.host.lang, 'zh-CN'); assert.equal(app.host.dataset.theme, 'dark');
-    assert.equal(app.shadow.querySelector('.title').textContent, 'OpenAI 官方状态');
+    assert.equal(app.shadow.querySelector('.title').textContent, 'OpenAI 服务状态');
     app.select('language', 'en');
     app.window.document.documentElement.lang = 'zh-TW'; await app.settle();
     assert.equal(app.host.lang, 'en');
@@ -336,7 +339,7 @@ test('late account and usage portals move the launcher and open panel by the nex
 });
 
 test('an incident notice and its launcher both stay clear of the native composer', async (t) => {
-    const app = environment(t, { clipWidth:52, response:() => successful(official({
+    const app = environment(t, { lang:'zh-CN', clipWidth:52, response:() => successful(official({
         affected_components:[{component_id:'chat',current_status:'partial_outage'}]
     })) });
     const composer = app.window.document.createElement('form');
@@ -345,9 +348,13 @@ test('an incident notice and its launcher both stay clear of the native composer
     await app.settle(); await app.frame();
     const toast = app.shadow.querySelector('.toast');
     assert.ok(toast);
+    assert.equal(toast.textContent, 'OpenAI 服务状态提醒：部分系统中断');
     assert.equal(toast.hasAttribute('data-suppressed'),false);
     assertClear(app.shadow.querySelector('.launcher'),composer);
     assertClear(toast,composer);
+    app.setResponse(() => successful());
+    app.refresh(); await app.settle();
+    assert.equal(app.shadow.querySelector('.toast').textContent, 'OpenAI 服务状态已更新：所有系统运行正常');
 });
 
 test('native modal and a full viewport obstruction suppress the whole widget until dismissed', async (t) => {
@@ -397,6 +404,33 @@ test('native fetch fallback omits credentials and distinguishes response-body ti
     await assert.rejects(requestStatus('https://status.openai.com/'), (error) => error.code === 'errorTimeout');
 });
 
+test('maintenance cards preserve both, either or neither scheduled boundary', async (t) => {
+    const start = '2026-11-03T10:00:00Z', end = '2026-11-03T12:00:00Z';
+    const app = environment(t, { lang:'zh-CN', response:() => successful(official({
+        scheduled_maintenances:[
+            {id:'range', name:'Full schedule', scheduled_for:start, scheduled_until:end},
+            {id:'start', name:'Start only', scheduled_for:start},
+            {id:'end', name:'End only', scheduled_until:end},
+            {id:'unknown', name:'Unknown schedule'}
+        ]
+    })) });
+    await app.settle(); app.open();
+    const schedules = Object.fromEntries([...app.shadow.querySelectorAll('.maintenance')].map(card=>[
+        card.querySelector('.incident-name').textContent, card.querySelector('.update').textContent
+    ]));
+    const formatDate = new Intl.DateTimeFormat('zh-CN', {
+        year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'
+    });
+    const starts = '计划开始：' + formatDate.format(new Date(start));
+    const ends = '计划结束：' + formatDate.format(new Date(end));
+    assert.deepEqual(schedules, {
+        'Full schedule': starts + '\n' + ends,
+        'Start only': starts,
+        'End only': ends,
+        'Unknown schedule': '暂无维护时间信息'
+    });
+});
+
 test('all bundled languages render and persist in the production bundle without changing status meaning', async (t) => {
     const app = environment(t, { response: () => successful(official({
         affected_components: [{component_id:'chat',current_status:'partial_outage'}],
@@ -405,7 +439,7 @@ test('all bundled languages render and persist in the production bundle without 
     })) });
     await app.settle(); app.open();
     const languageSelect = app.shadow.querySelector('select[name="language"]');
-    assert.equal(languageSelect.options.length, Object.keys(LOCALES).length+1);
+    assert.deepEqual([...languageSelect.options].map(option=>option.value), ['auto', ...Object.keys(LOCALES)]);
     for (const [id, resource] of Object.entries(LOCALES)) {
         app.select('language',id); await app.settle();
         assert.equal(app.host.lang,resource.lang,id);
@@ -414,6 +448,7 @@ test('all bundled languages render and persist in the production bundle without 
         assert.equal(app.shadow.querySelector('.title').textContent,translate(id,'title'));
         assert.equal(app.shadow.querySelector('.overall-text').textContent,translate(id,'overall_major'));
         assert.equal(app.shadow.querySelector('.badge').textContent,translate(id,'component_partial_outage'));
+        if (id==='zh-CN') assert.equal(app.shadow.querySelector('.group-name').textContent,'其他组件（1 项）');
         assert.equal(app.shadow.querySelector('.official-body').textContent,'Recovery is being monitored.');
         assert.equal(app.shadow.querySelector('.official-body').dir,'auto');
         assert.equal(app.shadow.querySelector('.incident-name').dir,'auto');

@@ -10,12 +10,12 @@ Lihat status layanan resmi OpenAI tanpa meninggalkan percakapan. Skrip pengguna 
 
 ## Informasi dan fitur
 
-- Dalam mode posisi otomatis, tombol status ringkas menempel di samping bilah sisi kiri dan mengikuti saat bilah diperluas, diciutkan, atau diubah lebarnya. Pada layar sempit, tombol tetap di sudut dan panel dibatasi oleh area tampilan.
-- Grup komponen resmi, insiden yang berlangsung, pemeliharaan terjadwal, dan waktu terakhir data berhasil diambil.
-- 13 bahasa antarmuka: Inggris, Tionghoa Sederhana dan Tradisional, Spanyol, Hindi, Portugis Brasil, Jepang, Korea, Prancis, Jerman, Indonesia, Arab, dan Rusia. Tersedia deteksi otomatis bahasa halaman/browser serta pemilih manual. Bahasa Arab memakai tata letak dari kanan ke kiri. Judul dan pesan insiden resmi tetap dalam bahasa aslinya; tidak ada layanan penerjemahan.
+- Jika posisi diatur otomatis, tombol status mengikuti bilah samping kiri. Tombol, panel, dan pemberitahuan bergeser agar tidak menutupi menu, kolom teks, atau kontrol lain. Jika ruang tidak cukup, elemen tersebut dapat disembunyikan untuk sementara.
+- Lihat komponen berdasarkan kelompok, gangguan yang masih berlangsung, jadwal pemeliharaan, dan waktu pembaruan terakhir yang berhasil.
+- Pilih [bahasa antarmuka](https://github.com/laipeng101/openai-status-companion/blob/main/docs/languages.md) atau biarkan skrip mengikuti bahasa halaman atau browser. Judul dan pesan resmi tentang gangguan ditampilkan dalam bahasa aslinya.
 - Mengikuti tema terang/gelap situs, pilihan tema dan sudut secara manual, akses melalui keyboard, serta Escape untuk menutup panel.
-- Halaman yang terlihat disegarkan setiap 60 detik; pemeriksaan berkala di latar belakang dijeda. Permintaan memiliki batas waktu 15 detik. Jika penyegaran gagal, data cache tetap tersedia dengan penanda yang jelas.
-- Data kompatibilitas yang tidak lengkap ditandai secara eksplisit sebagai belum diverifikasi, bukan ditampilkan sebagai konfirmasi terverifikasi bahwa semua layanan normal.
+- Data status diperbarui setiap 60 detik selama halaman terlihat. Pembaruan dijeda saat halaman berada di latar belakang. Batas waktu permintaan adalah 15 detik. Jika pembaruan gagal, data terakhir tetap ditampilkan dengan label cache.
+- Jika skrip menggunakan API lama, bagian yang datanya belum dapat diverifikasi akan diberi label.
 
 ## Pemasangan dan penggunaan
 
@@ -23,12 +23,12 @@ Pasang pengelola skrip pengguna seperti Tampermonkey, lalu klik **Pasang skrip i
 
 ## Privasi dan izin
 
-Permintaan status berupa GET anonim ke `status.openai.com`, tanpa cookie akun. Skrip memeriksa geometri bilah sisi serta atribut bahasa/tema halaman; skrip tidak membaca atau mengunggah prompt, percakapan, atau token akun. Hanya preferensi dan penanda untuk mengenali pemberitahuan status yang disimpan secara lokal. Tidak ada analitik, iklan, dependensi eksekutabel jarak jauh, atau layanan penerjemahan pihak ketiga.
+Skrip mengirim permintaan GET anonim ke `status.openai.com` tanpa cookie akun. Skrip memeriksa posisi, ukuran, dan apakah elemen halaman terlihat, serta membaca pengaturan bahasa dan tema halaman. Skrip tidak membaca atau mengirim prompt, percakapan, atau token akun. Pengaturan dan catatan untuk mencegah pemberitahuan berulang disimpan di perangkat. Skrip tidak berisi pelacak penggunaan, iklan, kode yang dijalankan dari sumber eksternal, atau layanan penerjemahan pihak ketiga.
 
 ## Kode sumber dan dukungan
 
 [Kode sumber, dokumentasi, dan pelaporan masalah](https://github.com/laipeng101/openai-status-companion). Lisensi MIT. Skrip pengguna lengkap yang dapat dibaca tersedia di sini; kode sumber dan deskripsi terlokalisasi disinkronkan otomatis melalui webhook push GitHub. Pasang dan perbarui melalui Greasy Fork.
 
-Pengujian mencakup regresi otomatis, pemeriksaan halaman uji di Chrome pada lebar desktop dan 390 px, serta integrasi dengan tata letak Leopard-X yang sebenarnya menggunakan pemutaran ulang data status publik. Lihat [dokumen validasi](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md) repositori untuk hasil dan batas cakupan pengujian. Tata letak dapat berubah seiring perkembangan situs yang didukung.
+Pengujian mencakup pemeriksaan otomatis, pemeriksaan tata letak di Chrome dengan halaman uji lokal pada layar desktop dan lebar 390 piksel, serta pemeriksaan di Leopard-X dengan data status publik yang dikumpulkan sebelumnya. Lihat hasil dan cakupan pengujian di [dokumen validasi](https://github.com/laipeng101/openai-status-companion/blob/main/docs/validation.md). Pembaruan situs dapat memengaruhi posisi tombol dan panel.
 
 [Catatan perubahan](https://github.com/laipeng101/openai-status-companion/blob/main/CHANGELOG.md) · [Bahasa yang didukung](https://github.com/laipeng101/openai-status-companion/blob/main/docs/languages.md)
