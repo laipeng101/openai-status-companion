@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.1 — 2026-11-04
+
+- Move the status button, details and notices away from native menus, including ChatGPT's account and usage menus, and from the composer and other page controls.
+- Temporarily hide the widget during modal dialogs or when no clear space fits. Restore the preferred position when space becomes available.
+
 ## 2.1.0 — 2026-11-03
 
 - Add Spanish, Hindi, Brazilian Portuguese, Japanese, Korean, French, German, Indonesian, Arabic, Russian and Traditional Chinese, bringing the interface to 13 languages.

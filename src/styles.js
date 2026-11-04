@@ -16,6 +16,7 @@ export const styles = `
   --border:#424b45; --shadow:0 16px 48px #0008;
   --warn:#eeb44c; --bad:#ff8a9b; --info:#91b4ff; color-scheme:dark;
 }
+:host([data-suppressed]),.toast[data-suppressed] {visibility:hidden!important}
 *,*::before,*::after {box-sizing:border-box}
 button,select {font:inherit; color:inherit}
 button,select,a,summary {touch-action:manipulation}
@@ -26,11 +27,12 @@ button:focus-visible,a:focus-visible,select:focus-visible,summary:focus-visible 
   outline:3px solid var(--info); outline-offset:3px;
 }
 [hidden] {display:none!important}
-.launcher {display:flex; align-items:center; gap:8px; min-height:38px; max-width:240px;
+.launcher {display:flex; align-items:center; gap:8px; min-height:38px; max-width:min(240px,var(--available-width,240px));
   padding:8px 13px; border:1px solid var(--border); border-radius:24px;
   background:var(--card); color:var(--text); box-shadow:0 4px 16px #0002;
   font-weight:650; font-size:13px; line-height:1.35; user-select:none;
 }
+.launcher>span:last-child {min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .launcher:hover {background:var(--raised)}
 .launcher.stale {border-style:dashed}
 .dot {width:9px; height:9px; flex:none; border-radius:50%; background:var(--subtle)}
@@ -109,7 +111,7 @@ select {min-height:32px; max-width:64%; padding:4px 8px; border:1px solid var(--
   pointer-events:auto; cursor:pointer}
 .toast.ok {border-inline-start-color:var(--ok)} .toast.bad {border-inline-start-color:var(--bad)}
 @media(max-width:767px) {
-  .launcher {min-height:36px; padding:8px 10px; max-width:160px; font-size:12px}
+  .launcher {min-height:36px; padding:8px 10px; max-width:min(160px,var(--available-width,160px)); font-size:12px}
   .header {padding:11px 12px} .content {padding:11px 12px}
   .panel {border-radius:13px}
 }

@@ -27,3 +27,36 @@ export function calculatePlacement({width, height, offsetLeft=0, offsetTop=0, si
     panelLeft:offsetLeft + panelLeft, panelTop:offsetTop + topGap, panelWidth,
     panelBottom:bottomGap + launcherHeight + 9, panelHeight:Math.max(40, Math.min(680, height - topGap - bottomGap - launcherHeight - 9))};
 }
+
+// Prefer a nearby free space. A bounded search deliberately gives up and lets the
+// caller hide the widget rather than accepting any overlap with the original UI.
+export const CLEARANCE = 10;
+const MAX_CANDIDATES = 96;
+export function findClearPosition(preferred, bounds, obstacles, clearance = CLEARANCE) {
+  const {width, height} = preferred;
+  if (width <= 0 || height <= 0 || width > bounds.right-bounds.left || height > bounds.bottom-bounds.top) return null;
+  const queue = [], seen = new Set();
+  function add(left, top) {
+    left = Math.max(bounds.left, Math.min(left, bounds.right-width));
+    top = Math.max(bounds.top, Math.min(top, bounds.bottom-height));
+    const key = `${left}:${top}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    queue.push({left, top, right:left+width, bottom:top+height, width, height,
+      distance:Math.abs(left-preferred.left)+2*Math.abs(top-preferred.top)});
+  }
+  add(preferred.left, preferred.top);
+  for (let attempt = 0; queue.length && attempt < MAX_CANDIDATES; attempt += 1) {
+    queue.sort((a,b) => a.distance-b.distance);
+    const candidate = queue.shift();
+    const collision = obstacles.find(rect => candidate.left < rect.right+clearance
+      && candidate.right > rect.left-clearance && candidate.top < rect.bottom+clearance
+      && candidate.bottom > rect.top-clearance);
+    if (!collision) return candidate;
+    add(collision.right+clearance, candidate.top);
+    add(collision.left-clearance-width, candidate.top);
+    add(candidate.left, collision.top-clearance-height);
+    add(candidate.left, collision.bottom+clearance);
+  }
+  return null;
+}

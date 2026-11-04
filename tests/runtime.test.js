@@ -32,11 +32,21 @@ function environment(t, { url = 'https://chatgpt.com/', lang = 'en', theme = 'li
     window.ResizeObserver = class { observe() {} disconnect() {} };
     let visibleWidth = clipWidth ?? sidebarWidth;
     let geometryReads = 0;
+    const boxes = new WeakMap();
     window.HTMLElement.prototype.getBoundingClientRect = function () {
         geometryReads += 1;
-        const dimensions = this.id === 'sidebar-clip' ? [0, 0, visibleWidth, height]
+        const host = this.getRootNode().host;
+        const dimensions = boxes.get(this) ?? (this.id === 'sidebar-clip' ? [0, 0, visibleWidth, height]
             : this.id === sidebarId ? [0, 0, sidebarWidth, height]
-            : this.classList.contains('launcher') ? [0, 0, 180, 38] : [0, 0, 0, 0];
+            : this.classList.contains('launcher') ? [parseFloat(host.style.left) || 0, parseFloat(host.style.top) || 0, 180, 38]
+            : this.classList.contains('panel') || this.classList.contains('toast') ? (() => {
+                const surfaceWidth = parseFloat(host.style.getPropertyValue('--panel-width'));
+                const surfaceHeight = Math.min(this.classList.contains('panel') ? 300 : 60,
+                    parseFloat(host.style.getPropertyValue('--panel-height')));
+                return [parseFloat(host.style.getPropertyValue('--panel-left')),
+                    height - parseFloat(host.style.getPropertyValue('--panel-bottom')) - surfaceHeight,
+                    surfaceWidth, surfaceHeight];
+            })() : [0, 0, 0, 0]);
         const [x, y, rectWidth, rectHeight] = dimensions;
         const result = { x, y, width: rectWidth, height: rectHeight, left: x, top: y, right: x + rectWidth, bottom: y + rectHeight };
         return { ...result, toJSON: () => ({ ...result }) };
@@ -71,7 +81,7 @@ function environment(t, { url = 'https://chatgpt.com/', lang = 'en', theme = 'li
     const host = window.document.getElementById(HOST_ID);
     const shadow = host.shadowRoot;
     return {
-        dom, window, host, shadow, requests, menus, activeMenus, saved,
+        dom, window, host, shadow, requests, menus, activeMenus, saved, boxes,
         get geometryReads() { return geometryReads; },
         async frame() { await new Promise(resolve => window.requestAnimationFrame(() => resolve())); },
         clip(next) {
@@ -157,7 +167,7 @@ test('language, theme and position preferences override website settings and per
     const app = environment(t, { lang: 'zh-CN', theme: 'dark', preferences: { language: 'en', theme: 'light', position: 'left' } });
     await app.settle();
     assert.equal(app.host.lang, 'en'); assert.equal(app.host.dataset.theme, 'light');
-    assert.equal(app.host.style.left, '14px');
+    assert.equal(app.host.style.left, '350px');
     app.open(); app.select('language', 'zh-CN'); app.select('theme', 'dark'); app.select('position', 'right');
     await app.settle();
     assert.equal(app.host.lang, 'zh-CN'); assert.equal(app.host.dir, 'ltr');
@@ -279,13 +289,87 @@ test('launcher and open panel dock to the visible clipped sidebar edge immediate
     }
 });
 
-test('fixed corner preferences and narrow mobile placement stay stable during sidebar collapse', async (t) => {
-    for (const [preferences,width,left] of [[{position:'left'},1280,14],[{position:'right'},1280,1086],[{},390,10]]) {
+test('corner preferences remain defaults and yield to a visible sidebar on desktop and mobile', async (t) => {
+    for (const [preferences,width,left] of [[{position:'left'},1280,62],[{position:'right'},1280,1086],[{},390,62]]) {
         const app = environment(t, { preferences, width });
         await app.settle();
+        if (width === 390) assert.equal(app.host.hasAttribute('inert'),true,'narrow open drawer leaves no launcher space');
         app.clip(52); await app.settle(); await app.frame();
+        assert.equal(app.host.hasAttribute('inert'),false);
         assert.equal(app.host.style.left, `${left}px`);
+        if (width === 390) {
+            app.open();
+            assert.equal(app.host.hasAttribute('inert'),false,'collapsed rail still leaves a usable panel');
+            assert.equal(app.shadow.querySelector('.panel').getBoundingClientRect().right,380);
+        }
     }
+});
+
+function assertClear(surface, obstacle) {
+    const a = surface.getBoundingClientRect(), b = obstacle.getBoundingClientRect();
+    assert.ok(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom,
+        `surface ${a.left},${a.top} intersects native UI ${b.left},${b.top}`);
+}
+
+test('late account and usage portals move the launcher and open panel by the next frame, then restore docking', async (t) => {
+    const app = environment(t, { clipWidth:52 });
+    await app.settle(); app.open();
+    const launcher = app.shadow.querySelector('.launcher'), panel = app.shadow.querySelector('.panel');
+    const { document } = app.window;
+    const portalRoot = document.createElement('div');
+    document.body.append(portalRoot);
+    const portal = document.createElement('div');
+    const menu = document.createElement('div');
+    portal.setAttribute('data-radix-popper-content-wrapper','');
+    menu.setAttribute('role','menu'); portal.append(menu);
+    for (const box of [[48,479,230,315],[48,592,262,157]]) {
+        app.boxes.set(portal,box); app.boxes.set(menu,box);
+        portalRoot.append(portal);
+        await app.settle(); await app.frame();
+        assert.equal(app.host.hasAttribute('inert'),false);
+        assertClear(launcher,portal); assertClear(panel,portal);
+        portal.remove();
+        await app.settle(); await app.frame();
+        assert.equal(app.host.style.left,'66px');
+        assert.equal(app.host.style.getPropertyValue('--panel-left'),'66px');
+    }
+});
+
+test('an incident notice and its launcher both stay clear of the native composer', async (t) => {
+    const app = environment(t, { clipWidth:52, response:() => successful(official({
+        affected_components:[{component_id:'chat',current_status:'partial_outage'}]
+    })) });
+    const composer = app.window.document.createElement('form');
+    app.boxes.set(composer,[52,680,540,120]);
+    app.window.document.querySelector('main').append(composer);
+    await app.settle(); await app.frame();
+    const toast = app.shadow.querySelector('.toast');
+    assert.ok(toast);
+    assert.equal(toast.hasAttribute('data-suppressed'),false);
+    assertClear(app.shadow.querySelector('.launcher'),composer);
+    assertClear(toast,composer);
+});
+
+test('native modal and a full viewport obstruction suppress the whole widget until dismissed', async (t) => {
+    const app = environment(t, { clipWidth:52 });
+    await app.settle(); app.open();
+    const { document } = app.window;
+    const overlay = document.createElement('div'); overlay.setAttribute('role','dialog');
+    app.boxes.set(overlay,[500,200,200,200]);
+    overlay.setAttribute('aria-modal','true');
+    document.body.append(overlay);
+    await app.settle(); await app.frame();
+    assert.equal(app.host.hasAttribute('data-suppressed'),true);
+    assert.equal(app.host.hasAttribute('inert'),true);
+    assert.equal(app.shadow.activeElement,null);
+    overlay.removeAttribute('aria-modal'); overlay.setAttribute('role','menu');
+    app.boxes.set(overlay,[0,0,1280,800]);
+    await app.settle(); await app.frame();
+    assert.equal(app.host.hasAttribute('data-suppressed'),true);
+    overlay.hidden = true;
+    await app.settle(); await app.frame();
+    assert.equal(app.host.hasAttribute('inert'),false);
+    assert.equal(app.shadow.querySelector('.panel').hidden,false);
 });
 
 test('native fetch fallback omits credentials and distinguishes response-body timeout', async (t) => {

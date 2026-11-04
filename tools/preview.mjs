@@ -42,6 +42,16 @@ function previewPage(params) {
   .site-chatgpt .sidebar {position:absolute;inset:0 auto 0 0;}
   .site-chatgpt .sidebar-content {margin-left:36px;}
   .site-chatgpt .rail {z-index:3;}
+  .rail-footer {position:absolute;inset:auto 5px 8px;display:grid;gap:8px}
+  .rail-footer button {border-radius:50%;height:36px;padding:0}
+  .native-popover {position:fixed;z-index:50;left:48px;bottom:6px;width:min(230px,calc(100vw - 54px));}
+  .native-popover.usage {bottom:52px;width:min(262px,calc(100vw - 54px));}
+  .native-popover [role=menu] {display:grid;gap:4px;padding:9px 12px;border-radius:16px;background:var(--surface);border:1px solid var(--border);box-shadow:0 8px 24px #0005}
+  .native-popover button {text-align:start;padding:6px 8px;border:0}
+  .native-popover button:hover {background:var(--sidebar)}
+  .native-popover p {margin:0;padding:7px 8px;font-size:13px}
+  #native-dialog {color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:16px}
+  #native-dialog::backdrop {background:#0006}
   .sidebar h2 {margin:0 0 28px;font-size:18px;white-space:nowrap}.sidebar p {color:var(--muted);white-space:nowrap}
   .sidebar nav {display:grid;gap:14px}.sidebar nav span {padding:8px;border-radius:7px;background:var(--surface);white-space:nowrap}
   .site-chatgpt.collapsed .sidebar-clip {width:52px;overflow:hidden;}
@@ -59,7 +69,7 @@ function previewPage(params) {
   @media(max-width:767px) {.layout {margin-left:52px}.site-leopard .sidebar {max-width:calc(100vw - 55px)}.toolbar {padding:10px}.toolbar form {gap:7px}.toolbar select {max-width:110px}.toolbar .note {font-size:11px}main {padding:20px 18px 130px}main h1 {font-size:20px}.composer,.collapsed .composer {left:calc(52px + (100vw - 52px)*.5);width:calc(100vw - 84px);bottom:70px;font-size:12px;padding:17px;min-height:60px}}
 </style></head>
 <body class="site-${config.site}${config.collapsed?' collapsed':''}${config.peek?' peek':''}">
-<div class="rail" ${config.site==='leopard'?'id="stage-sidebar-tiny-bar"':''} aria-label="Collapsed navigation"><span>◉</span><span>＋</span><span>⌕</span></div>
+<div class="rail" ${config.site==='leopard'?'id="stage-sidebar-tiny-bar"':'data-app-navigation-rail="true"'} aria-label="Collapsed navigation"><span>◉</span><span>＋</span><span>⌕</span><div class="rail-footer"><button id="usage-menu" aria-label="Open usage menu" aria-haspopup="menu" aria-expanded="false">◉</button><button id="account-menu" aria-label="Open account menu" aria-haspopup="menu" aria-expanded="false">A</button></div></div>
 ${config.site==='chatgpt'?'<div class="sidebar-clip" id="preview-sidebar-clip">':''}
 <aside class="sidebar" id="${config.site==='chatgpt'?'app-shell-sidebar':'stage-slideover-sidebar'}" data-testid="sidebar">
   <div class="sidebar-content"><h2>${config.site==='chatgpt'?'ChatGPT layout fixture':'Leopard-X layout fixture'}</h2><nav><span>＋ New chat</span><span>Projects</span><span>Example conversation</span><span>Another example</span></nav><p>Public synthetic layout only</p></div>
@@ -78,10 +88,12 @@ ${config.site==='chatgpt'?'</div>':''}
     ${config.site==='chatgpt'?`<button id="peek-sidebar" type="button" aria-pressed="${config.peek}">Toggle collapsed peek</button>`:''}
     <label>Sidebar width <input id="sidebar-width" type="range" min="180" max="420" value="${config.width}"><output id="width-value">${config.width}</output></label>
     <label><input id="network-failure" type="checkbox"${config.scene==='failure'?' checked':''}>Simulate network failure</label>
+    <button id="open-dialog" type="button">Open native dialog</button>
     <span id="request-count" role="status">Status requests: 0</span>
   </div>
   <p class="note">Local visual fixture. Status responses are synthetic snapshots; this page never contacts OpenAI. The production userscript bundle is loaded unchanged.</p>
 </header><main><h1>${config.language==='zh-CN'?'我们从哪里开始？':'Where should we begin?'}</h1><p>${config.language==='zh-CN'?'用于验证状态面板、边栏定位、语言和主题。这里没有真实聊天数据。':'Use the status launcher to inspect the panel, layout, language and theme. There is no real conversation data here.'}</p><div class="composer" role="textbox" aria-label="Placeholder composer">${config.language==='zh-CN'?'询问 ChatGPT（布局占位）':'Ask ChatGPT (layout placeholder)'}</div></main></div>
+<dialog id="native-dialog"><p>Native dialog fixture</p><form method="dialog"><button>Close dialog</button></form></dialog>
 <script>
 (() => {
   const config=${jsonForScript(config)};
@@ -139,6 +151,40 @@ ${config.site==='chatgpt'?'</div>':''}
   document.getElementById('sidebar-width').addEventListener('input',event=>{
     document.documentElement.style.setProperty('--sidebar-width',event.target.value+'px');
     document.getElementById('width-value').value=event.target.value;
+  });
+  let popover, trigger;
+  function closeMenu() {
+    popover?.remove(); popover=undefined;
+    trigger?.setAttribute('aria-expanded','false'); trigger=undefined;
+  }
+  for (const [id,items] of [['account-menu',['Example account','Upgrade plan','Personalization','Profile','Settings','Help','Sign out']],
+    ['usage-menu',['Usage source: Your plan','Weekly limit','Credits','Manage usage']]]) {
+    document.getElementById(id).addEventListener('click',event=>{
+      const current=event.currentTarget;
+      const alreadyOpen=trigger===current;
+      closeMenu();
+      if(alreadyOpen) return;
+      trigger=current;
+      trigger.setAttribute('aria-expanded','true');
+      popover=document.createElement('div');
+      popover.className='native-popover'+(id==='usage-menu'?' usage':'');
+      popover.setAttribute('data-radix-popper-content-wrapper','');
+      const menu=document.createElement('div');
+      menu.setAttribute('role','menu');
+      menu.setAttribute('aria-label',id==='usage-menu'?'Usage menu':'Account menu');
+      for(const [index,label] of items.entries()) {
+        const item=document.createElement(id==='usage-menu'&&index<3?'p':'button');
+        if(item.tagName==='BUTTON') item.setAttribute('role','menuitem');
+        item.textContent=label; menu.append(item);
+      }
+      popover.append(menu); document.body.append(popover);
+    });
+  }
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&popover) {const previous=trigger; closeMenu(); previous.focus();}
+  });
+  document.getElementById('open-dialog').addEventListener('click',()=>{
+    closeMenu(); document.getElementById('native-dialog').showModal();
   });
 })();
 </script>

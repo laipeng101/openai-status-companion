@@ -13,7 +13,7 @@
 // @name:ar      مساعد حالة OpenAI
 // @name:ru      Статус OpenAI
 // @namespace    https://github.com/laipeng101/openai-status-companion
-// @version      2.1.0
+// @version      2.1.1
 // @description  Official OpenAI status, components, incidents and maintenance on ChatGPT and Aizex / Leopard-X. 13 UI languages, sidebar docking and themes.
 // @description:zh-CN 在 ChatGPT 与 Aizex / Leopard-X 显示 OpenAI 官方状态、组件、事件及计划维护，支持 13 种界面语言、边栏吸附和主题。
 // @description:zh-TW 在 ChatGPT 與 Aizex / Leopard-X 顯示 OpenAI 官方狀態、元件、事件及排定維護，支援 13 種介面語言、側欄吸附與佈景主題。
@@ -2582,6 +2582,41 @@
       panelHeight: Math.max(40, Math.min(680, height - topGap - bottomGap - launcherHeight - 9))
     };
   }
+  var CLEARANCE = 10;
+  var MAX_CANDIDATES = 96;
+  function findClearPosition(preferred, bounds, obstacles, clearance = CLEARANCE) {
+    const { width, height } = preferred;
+    if (width <= 0 || height <= 0 || width > bounds.right - bounds.left || height > bounds.bottom - bounds.top) return null;
+    const queue = [], seen = /* @__PURE__ */ new Set();
+    function add(left, top) {
+      left = Math.max(bounds.left, Math.min(left, bounds.right - width));
+      top = Math.max(bounds.top, Math.min(top, bounds.bottom - height));
+      const key = `${left}:${top}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      queue.push({
+        left,
+        top,
+        right: left + width,
+        bottom: top + height,
+        width,
+        height,
+        distance: Math.abs(left - preferred.left) + 2 * Math.abs(top - preferred.top)
+      });
+    }
+    add(preferred.left, preferred.top);
+    for (let attempt = 0; queue.length && attempt < MAX_CANDIDATES; attempt += 1) {
+      queue.sort((a, b) => a.distance - b.distance);
+      const candidate = queue.shift();
+      const collision = obstacles.find((rect) => candidate.left < rect.right + clearance && candidate.right > rect.left - clearance && candidate.top < rect.bottom + clearance && candidate.bottom > rect.top - clearance);
+      if (!collision) return candidate;
+      add(collision.right + clearance, candidate.top);
+      add(collision.left - clearance - width, candidate.top);
+      add(candidate.left, collision.top - clearance - height);
+      add(candidate.left, collision.bottom + clearance);
+    }
+    return null;
+  }
 
   // src/sidebar.js
   var SETTLE_TIME = 200;
@@ -2597,15 +2632,16 @@
     "data-app-shell-sidebar-open",
     "data-slate-sidebar-peeking"
   ];
-  function visibleSidebarRect(element, viewport) {
+  function visibleSidebarRect(element, viewport, clipAncestors = true) {
     const view = element.ownerDocument.defaultView;
     const bounds = element.getBoundingClientRect();
     let left = Math.max(bounds.left, viewport.left), right = Math.min(bounds.right, viewport.right);
     let top = Math.max(bounds.top, viewport.top), bottom = Math.min(bounds.bottom, viewport.bottom);
+    if (right <= left || bottom <= top) return null;
     for (let node = element; node; node = node.parentElement) {
       const style = view.getComputedStyle(node);
       if (node.hidden || style.display === "none" || ["hidden", "collapse"].includes(style.visibility) || style.contentVisibility === "hidden" || Number.parseFloat(style.opacity) === 0) return null;
-      if (node === element) continue;
+      if (node === element || !clipAncestors) continue;
       const paintClip = /\b(paint|strict|content)\b/.test(style.contain);
       const clipX = paintClip || ["hidden", "clip", "auto", "scroll", "overlay"].includes(style.overflowX || style.overflow);
       const clipY = paintClip || ["hidden", "clip", "auto", "scroll", "overlay"].includes(style.overflowY || style.overflow);
@@ -2694,6 +2730,119 @@
     return { discover, schedule, pause, resume };
   }
 
+  // src/obstructions.js
+  var OVERLAYS = '[role="menu"],[role="listbox"],[role="dialog"],[role="alertdialog"],[role="tooltip"],[aria-modal="true"],dialog[open],[popover],[data-radix-popper-content-wrapper],[data-radix-portal],[data-headlessui-portal]';
+  var CONTENT = 'button,a[href],input:not([type="hidden"]),textarea,select,summary,[contenteditable]:not([contenteditable="false"]),[role="button"],[role="textbox"],[role="combobox"],[role="slider"],[role="switch"],[role="checkbox"],[role="tab"],form,header,footer,[role="toolbar"],[role="navigation"],[role="alert"],[role="status"],article,p,h1,h2,h3,h4,h5,h6,pre,blockquote,table,img,video,canvas,iframe,[data-message-author-role],[data-testid^="conversation-turn-"]';
+  var SELECTOR_ATTRIBUTES = /* @__PURE__ */ new Set([
+    "role",
+    "aria-modal",
+    "open",
+    "popover",
+    "href",
+    "type",
+    "contenteditable",
+    "data-testid",
+    "id",
+    "data-app-navigation-rail",
+    "data-message-author-role",
+    "data-radix-popper-content-wrapper",
+    "data-radix-portal",
+    "data-headlessui-portal"
+  ]);
+  var ATTRIBUTES2 = ["class", "style", "hidden", "inert", "aria-hidden", "aria-expanded", "data-state", ...SELECTOR_ATTRIBUTES];
+  var MAX_ANIMATION_TIME2 = 5e3;
+  function createObstructionTracker(document2, host, sidebarSelectors, onChange) {
+    const view = document2.defaultView;
+    const selector = `${OVERLAYS},${CONTENT},${sidebarSelectors}`;
+    let candidates = [], dirty = true;
+    const animations = /* @__PURE__ */ new Map();
+    const resizeObserver = typeof view.ResizeObserver === "function" ? new view.ResizeObserver(() => onChange(true)) : null;
+    const owned = (node) => node === host || host.contains(node);
+    const relevant = (node) => node?.nodeType === 1 && !owned(node) && (node.matches(selector) || node.querySelector(selector));
+    const observer = new view.MutationObserver((records) => {
+      let changed = false;
+      for (const record of records) {
+        if (owned(record.target)) continue;
+        if (record.type === "childList") {
+          if ([...record.addedNodes, ...record.removedNodes].some(relevant)) {
+            dirty = true;
+            changed = true;
+          }
+        } else if (relevant(record.target) || candidates.some((node) => record.target.contains(node))) {
+          dirty ||= SELECTOR_ATTRIBUTES.has(record.attributeName);
+          changed = true;
+        }
+      }
+      if (changed) onChange(true);
+    });
+    observer.observe(document2.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ATTRIBUTES2 });
+    function discover() {
+      if (!dirty) return;
+      dirty = false;
+      candidates = [...document2.querySelectorAll(selector)].filter((node) => !owned(node));
+      resizeObserver?.disconnect();
+      for (const node of candidates) {
+        if (node.matches(OVERLAYS) || !node.parentElement?.closest(selector)) resizeObserver?.observe(node);
+      }
+    }
+    function read(viewport) {
+      discover();
+      const now = view.performance.now();
+      for (const [node, running] of animations) {
+        for (const [key, started] of running) if (now - started >= MAX_ANIMATION_TIME2) running.delete(key);
+        if (!running.size || !node.isConnected) animations.delete(node);
+      }
+      if (animations.size) onChange(true);
+      const regions = [];
+      const visible = /* @__PURE__ */ new Map();
+      for (const node of candidates) {
+        const rect = visibleSidebarRect(node, viewport, !node.matches(OVERLAYS));
+        if (!rect) continue;
+        if (node.getAttribute("aria-modal") === "true" || node.matches("dialog[open]")) return { regions: [], modal: true };
+        visible.set(node, rect);
+        let ancestor = node.parentElement;
+        while (ancestor) {
+          const container = visible.get(ancestor);
+          if (container && container.left <= rect.left && container.right >= rect.right && container.top <= rect.top && container.bottom >= rect.bottom) break;
+          ancestor = ancestor.parentElement;
+        }
+        if (!ancestor) regions.push(rect);
+      }
+      return { regions, modal: false };
+    }
+    function interaction(event) {
+      if (!event.composedPath().includes(host)) onChange(true);
+    }
+    for (const name of ["pointerdown", "pointerover", "focusin", "keydown", "scroll", "toggle", "beforetoggle"]) {
+      document2.addEventListener(name, interaction, { capture: true, passive: true });
+    }
+    function animation(event) {
+      if (!relevant(event.target)) return;
+      const key = `${event.type.startsWith("transition") ? "transition" : "animation"}:${event.propertyName || event.animationName}:${event.pseudoElement || ""}`;
+      let running = animations.get(event.target);
+      if (event.type === "transitionrun" || event.type === "animationstart") {
+        if (!running) {
+          running = /* @__PURE__ */ new Map();
+          animations.set(event.target, running);
+        }
+        running.set(key, view.performance.now());
+      } else {
+        running?.delete(key);
+        if (!running?.size) animations.delete(event.target);
+      }
+      onChange(true);
+    }
+    for (const name of ["transitionrun", "transitionend", "transitioncancel", "animationstart", "animationend", "animationcancel"]) {
+      document2.addEventListener(name, animation, { capture: true, passive: true });
+    }
+    return { read, invalidate() {
+      dirty = true;
+      onChange(true);
+    }, pause() {
+      animations.clear();
+    } };
+  }
+
   // src/transport.js
   var REQUEST_TIMEOUT = 15e3;
   function request(url, responseType = "text") {
@@ -2758,6 +2907,7 @@
   --border:#424b45; --shadow:0 16px 48px #0008;
   --warn:#eeb44c; --bad:#ff8a9b; --info:#91b4ff; color-scheme:dark;
 }
+:host([data-suppressed]),.toast[data-suppressed] {visibility:hidden!important}
 *,*::before,*::after {box-sizing:border-box}
 button,select {font:inherit; color:inherit}
 button,select,a,summary {touch-action:manipulation}
@@ -2768,11 +2918,12 @@ button:focus-visible,a:focus-visible,select:focus-visible,summary:focus-visible 
   outline:3px solid var(--info); outline-offset:3px;
 }
 [hidden] {display:none!important}
-.launcher {display:flex; align-items:center; gap:8px; min-height:38px; max-width:240px;
+.launcher {display:flex; align-items:center; gap:8px; min-height:38px; max-width:min(240px,var(--available-width,240px));
   padding:8px 13px; border:1px solid var(--border); border-radius:24px;
   background:var(--card); color:var(--text); box-shadow:0 4px 16px #0002;
   font-weight:650; font-size:13px; line-height:1.35; user-select:none;
 }
+.launcher>span:last-child {min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .launcher:hover {background:var(--raised)}
 .launcher.stale {border-style:dashed}
 .dot {width:9px; height:9px; flex:none; border-radius:50%; background:var(--subtle)}
@@ -2851,7 +3002,7 @@ select {min-height:32px; max-width:64%; padding:4px 8px; border:1px solid var(--
   pointer-events:auto; cursor:pointer}
 .toast.ok {border-inline-start-color:var(--ok)} .toast.bad {border-inline-start-color:var(--bad)}
 @media(max-width:767px) {
-  .launcher {min-height:36px; padding:8px 10px; max-width:160px; font-size:12px}
+  .launcher {min-height:36px; padding:8px 10px; max-width:min(160px,var(--available-width,160px)); font-size:12px}
   .header {padding:11px 12px} .content {padding:11px 12px}
   .panel {border-radius:13px}
 }
@@ -2866,6 +3017,8 @@ select {min-height:32px; max-width:64%; padding:4px 8px; border:1px solid var(--
   var MIN_REQUEST_GAP = 15e3;
   var FOCUS_REFRESH_AGE = 45e3;
   var DISCOVERY_INTERVAL = 2e3;
+  var COMPACT_PANEL_WIDTH = 260;
+  var COMPACT_PANEL_HEIGHTS = [200, 120];
   if (!document.getElementById(HOST_ID)) start();
   function start() {
     const settings = readSettings();
@@ -2981,11 +3134,9 @@ select {min-height:32px; max-width:64%; padding:4px 8px; border:1px solid var(--
       panel.hidden = !expanded;
       launcher.setAttribute("aria-expanded", String(expanded));
       shadow.querySelector(".toast")?.remove();
-      if (expanded) {
-        renderContent();
-        panel.focus({ preventScroll: true });
-      }
-      schedulePlacement();
+      if (expanded) renderContent();
+      place();
+      if (expanded && !host.hasAttribute("inert")) panel.focus({ preventScroll: true });
     }
     function updateChrome() {
       locale = resolveLocale(settings.language, document.documentElement.lang, navigator.languages);
@@ -3211,7 +3362,10 @@ select {min-height:32px; max-width:64%; padding:4px 8px; border:1px solid var(--
       toast.setAttribute("role", "status");
       toast.addEventListener("click", () => setExpanded(true));
       shadow.append(toast);
-      toastTimer = setTimeout(() => toast.remove(), 8e3);
+      toastTimer = setTimeout(() => {
+        toast.remove();
+        schedulePlacement();
+      }, 8e3);
     }
     function schedulePoll() {
       clearTimeout(pollTimer);
@@ -3219,21 +3373,47 @@ select {min-height:32px; max-width:64%; padding:4px 8px; border:1px solid var(--
     }
     const selectors = ADAPTERS[host.dataset.adapter].join(",");
     const sidebarTracker = createSidebarTracker(document, selectors, place);
+    const obstructions = createObstructionTracker(document, host, selectors, sidebarTracker.schedule);
+    const surfaceObserver = typeof ResizeObserver === "function" ? new ResizeObserver(schedulePlacement) : null;
+    surfaceObserver?.observe(launcher);
+    surfaceObserver?.observe(panel);
     function schedulePlacement() {
       sidebarTracker.schedule();
     }
+    function suppress(suppressed) {
+      if (host.hasAttribute("data-suppressed") === suppressed) return;
+      if (suppressed) shadow.activeElement?.blur();
+      host.toggleAttribute("data-suppressed", suppressed);
+      host.toggleAttribute("inert", suppressed);
+    }
     function place() {
       if (!host.isConnected) document.documentElement.append(host);
-      host.hidden = Boolean(document.fullscreenElement);
+      if (document.fullscreenElement) {
+        suppress(true);
+        return;
+      }
       const viewport = window.visualViewport;
       const width = viewport?.width || innerWidth, height = viewport?.height || innerHeight;
       const offsetLeft = viewport?.offsetLeft || 0, offsetTop = viewport?.offsetTop || 0;
       const clip = { left: offsetLeft, right: offsetLeft + width, top: offsetTop, bottom: offsetTop + height };
+      const { regions, modal } = obstructions.read(clip);
+      if (modal) {
+        suppress(true);
+        return;
+      }
       const rects = sidebarTracker.discover().map((item) => visibleSidebarRect(item, clip)).filter(Boolean).map((rect) => ({ ...rect, left: rect.left - offsetLeft, right: rect.right - offsetLeft }));
       const sidebar = chooseSidebar(rects, width, height);
-      const launcherRect = launcher.getBoundingClientRect();
       const hostStyle = getComputedStyle(host);
       const safeInset = (edge) => Number.parseFloat(hostStyle.getPropertyValue(`--safe-${edge}`)) || 0;
+      const gap = width < 768 ? 10 : 14;
+      const bounds = {
+        left: clip.left + Math.max(gap, safeInset("left")),
+        right: clip.right - Math.max(gap, safeInset("right")),
+        top: clip.top + Math.max(gap, safeInset("top")),
+        bottom: clip.bottom - Math.max(gap, safeInset("bottom"))
+      };
+      host.style.setProperty("--available-width", `${Math.max(0, bounds.right - bounds.left)}px`);
+      const launcherRect = launcher.getBoundingClientRect();
       const placement = calculatePlacement({
         width,
         height,
@@ -3248,13 +3428,49 @@ select {min-height:32px; max-width:64%; padding:4px 8px; border:1px solid var(--
         safeTop: safeInset("top"),
         safeBottom: safeInset("bottom")
       });
-      host.style.left = `${placement.left}px`;
-      host.style.top = `${placement.top}px`;
+      const dock = findClearPosition({ left: placement.left, top: placement.top, width: launcherRect.width, height: launcherRect.height }, bounds, regions);
+      if (!dock) {
+        suppress(true);
+        return;
+      }
+      host.style.left = `${dock.left}px`;
+      host.style.top = `${dock.top}px`;
       host.style.bottom = "auto";
-      host.style.setProperty("--panel-left", `${placement.panelLeft}px`);
-      host.style.setProperty("--panel-width", `${placement.panelWidth}px`);
+      const sidebarEdge = sidebar ? offsetLeft + sidebar.right + CLEARANCE : bounds.left;
+      const panelWidth = Math.min(placement.panelWidth, Math.max(0, bounds.right - sidebarEdge));
+      host.style.setProperty("--panel-width", `${panelWidth}px`);
       host.style.setProperty("--panel-height", `${placement.panelHeight}px`);
-      host.style.setProperty("--panel-bottom", `${Math.max(0, innerHeight - offsetTop - height) + placement.panelBottom}px`);
+      const toast = shadow.querySelector(".toast");
+      const surface = expanded ? panel : toast;
+      let surfaceLeft = Math.min(dock.left, bounds.right - panelWidth), surfaceBottom = dock.top - CLEARANCE;
+      if (surface) {
+        let fit = function() {
+          const { width: width2, height: height2 } = surface.getBoundingClientRect();
+          return findClearPosition({ left: surfaceLeft, top: surfaceBottom - height2, width: width2, height: height2 }, bounds, blockers);
+        };
+        const blockers = [...regions, dock];
+        let free = fit();
+        if (expanded && !free) {
+          host.style.setProperty("--panel-width", `${Math.min(panelWidth, COMPACT_PANEL_WIDTH)}px`);
+          for (const height2 of COMPACT_PANEL_HEIGHTS) {
+            host.style.setProperty("--panel-height", `${Math.min(placement.panelHeight, height2)}px`);
+            free = fit();
+            if (free) break;
+          }
+        }
+        if (expanded && !free) {
+          suppress(true);
+          return;
+        }
+        if (toast) toast.toggleAttribute("data-suppressed", !free);
+        if (free) {
+          surfaceLeft = free.left;
+          surfaceBottom = free.bottom;
+        }
+      }
+      host.style.setProperty("--panel-left", `${surfaceLeft}px`);
+      host.style.setProperty("--panel-bottom", `${innerHeight - surfaceBottom}px`);
+      suppress(false);
     }
     function layoutWatch() {
       clearTimeout(layoutTimer);
@@ -3285,6 +3501,7 @@ select {min-height:32px; max-width:64%; padding:4px 8px; border:1px solid var(--
         clearTimeout(pollTimer);
         clearTimeout(layoutTimer);
         sidebarTracker.pause();
+        obstructions.pause();
         return;
       }
       if (Date.now() - lastRequestAt >= FOCUS_REFRESH_AGE) refresh();
@@ -3298,10 +3515,12 @@ select {min-height:32px; max-width:64%; padding:4px 8px; border:1px solid var(--
     window.addEventListener("focus", focusRefresh, { passive: true });
     window.addEventListener("online", focusRefresh, { passive: true });
     window.addEventListener("resize", schedulePlacement, { passive: true });
+    document.addEventListener("fullscreenchange", schedulePlacement);
     window.visualViewport?.addEventListener("resize", schedulePlacement, { passive: true });
     window.visualViewport?.addEventListener("scroll", schedulePlacement, { passive: true });
     window.addEventListener("pageshow", () => {
       sidebarTracker.resume();
+      obstructions.invalidate();
       schedulePoll();
       layoutWatch();
     });
@@ -3309,6 +3528,7 @@ select {min-height:32px; max-width:64%; padding:4px 8px; border:1px solid var(--
       clearTimeout(pollTimer);
       clearTimeout(layoutTimer);
       sidebarTracker.pause();
+      obstructions.pause();
     });
     function updateMenus() {
       if (typeof GM_registerMenuCommand !== "function" || menuLocale === locale) return;

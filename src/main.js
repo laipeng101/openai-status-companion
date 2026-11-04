@@ -1,8 +1,9 @@
 import {STATUS_URL, parseOfficialPage, normalizeOfficialSummary, normalizeCompatibility,
   getOverall, getComponentStatus, findLatestUpdate, validateResponse, safeStatusUrl} from './status-core.js';
 import {LOCALES, resolveLocale, translate, translateComponent, translateGroup} from './locales.js';
-import {ADAPTERS, adapterFor, chooseSidebar, calculatePlacement} from './layout.js';
+import {ADAPTERS, adapterFor, chooseSidebar, calculatePlacement, findClearPosition, CLEARANCE} from './layout.js';
 import {createSidebarTracker, visibleSidebarRect} from './sidebar.js';
+import {createObstructionTracker} from './obstructions.js';
 import {request} from './transport.js';
 import {styles} from './styles.js';
 
@@ -13,6 +14,8 @@ const REFRESH_INTERVAL = 60_000;
 const MIN_REQUEST_GAP = 15_000;
 const FOCUS_REFRESH_AGE = 45_000;
 const DISCOVERY_INTERVAL = 2_000;
+const COMPACT_PANEL_WIDTH = 260;
+const COMPACT_PANEL_HEIGHTS = [200, 120];
 if (!document.getElementById(HOST_ID)) start();
 
 function start() {
@@ -123,8 +126,9 @@ function start() {
     panel.hidden = !expanded;
     launcher.setAttribute('aria-expanded', String(expanded));
     shadow.querySelector('.toast')?.remove();
-    if (expanded) { renderContent(); panel.focus({preventScroll:true}); }
-    schedulePlacement();
+    if (expanded) renderContent();
+    place();
+    if (expanded && !host.hasAttribute('inert')) panel.focus({preventScroll:true});
   }
   function updateChrome() {
     locale = resolveLocale(settings.language, document.documentElement.lang, navigator.languages);
@@ -303,7 +307,7 @@ function start() {
     clearTimeout(toastTimer); shadow.querySelector('.toast')?.remove();
     const toast=el('div',`toast ${tone}`,message); toast.setAttribute('role','status');
     toast.addEventListener('click',()=>setExpanded(true)); shadow.append(toast);
-    toastTimer=setTimeout(()=>toast.remove(),8_000);
+    toastTimer=setTimeout(()=>{toast.remove();schedulePlacement();},8_000);
   }
   function schedulePoll() {
     clearTimeout(pollTimer);
@@ -312,31 +316,74 @@ function start() {
 
   const selectors=ADAPTERS[host.dataset.adapter].join(',');
   const sidebarTracker=createSidebarTracker(document,selectors,place);
+  const obstructions=createObstructionTracker(document,host,selectors,sidebarTracker.schedule);
+  const surfaceObserver=typeof ResizeObserver==='function' ? new ResizeObserver(schedulePlacement) : null;
+  surfaceObserver?.observe(launcher);
+  surfaceObserver?.observe(panel);
   function schedulePlacement() {
     sidebarTracker.schedule();
   }
+  function suppress(suppressed) {
+    if (host.hasAttribute('data-suppressed') === suppressed) return;
+    if (suppressed) shadow.activeElement?.blur();
+    host.toggleAttribute('data-suppressed',suppressed);
+    host.toggleAttribute('inert',suppressed);
+  }
   function place() {
     if (!host.isConnected) document.documentElement.append(host);
-    host.hidden=Boolean(document.fullscreenElement);
+    if (document.fullscreenElement) { suppress(true); return; }
     const viewport=window.visualViewport;
     const width=viewport?.width || innerWidth, height=viewport?.height || innerHeight;
     const offsetLeft=viewport?.offsetLeft || 0, offsetTop=viewport?.offsetTop || 0;
     const clip={left:offsetLeft,right:offsetLeft+width,top:offsetTop,bottom:offsetTop+height};
+    const {regions,modal}=obstructions.read(clip);
+    if (modal) { suppress(true); return; }
     const rects=sidebarTracker.discover().map(item=>visibleSidebarRect(item,clip)).filter(Boolean)
       .map(rect=>({...rect,left:rect.left-offsetLeft,right:rect.right-offsetLeft}));
     const sidebar=chooseSidebar(rects,width,height);
-    const launcherRect=launcher.getBoundingClientRect();
     const hostStyle=getComputedStyle(host);
     const safeInset=edge=>Number.parseFloat(hostStyle.getPropertyValue(`--safe-${edge}`)) || 0;
+    const gap=width < 768 ? 10 : 14;
+    const bounds={left:clip.left+Math.max(gap,safeInset('left')),right:clip.right-Math.max(gap,safeInset('right')),
+      top:clip.top+Math.max(gap,safeInset('top')),bottom:clip.bottom-Math.max(gap,safeInset('bottom'))};
+    host.style.setProperty('--available-width',`${Math.max(0,bounds.right-bounds.left)}px`);
+    const launcherRect=launcher.getBoundingClientRect();
     const placement=calculatePlacement({width,height,offsetLeft,offsetTop,sidebarRight:sidebar?.right || 0,
       launcherWidth:launcherRect.width,launcherHeight:launcherRect.height,position:settings.position,
       safeLeft:safeInset('left'),safeRight:safeInset('right'),safeTop:safeInset('top'),safeBottom:safeInset('bottom')});
-    host.style.left=`${placement.left}px`; host.style.top=`${placement.top}px`; host.style.bottom='auto';
-    host.style.setProperty('--panel-left',`${placement.panelLeft}px`);
-    host.style.setProperty('--panel-width',`${placement.panelWidth}px`);
+    const dock=findClearPosition({left:placement.left,top:placement.top,width:launcherRect.width,height:launcherRect.height},bounds,regions);
+    if (!dock) { suppress(true); return; }
+    host.style.left=`${dock.left}px`; host.style.top=`${dock.top}px`; host.style.bottom='auto';
+    const sidebarEdge = sidebar ? offsetLeft+sidebar.right+CLEARANCE : bounds.left;
+    const panelWidth=Math.min(placement.panelWidth,Math.max(0,bounds.right-sidebarEdge));
+    host.style.setProperty('--panel-width',`${panelWidth}px`);
     host.style.setProperty('--panel-height',`${placement.panelHeight}px`);
-    // Fixed positioning uses layout viewport bottom; translate the visual viewport edge for the on-screen keyboard.
-    host.style.setProperty('--panel-bottom',`${Math.max(0,innerHeight-offsetTop-height)+placement.panelBottom}px`);
+    const toast=shadow.querySelector('.toast');
+    const surface=expanded ? panel : toast;
+    let surfaceLeft=Math.min(dock.left,bounds.right-panelWidth), surfaceBottom=dock.top-CLEARANCE;
+    if (surface) {
+      const blockers=[...regions,dock];
+      function fit() {
+        const {width,height}=surface.getBoundingClientRect();
+        return findClearPosition({left:surfaceLeft,top:surfaceBottom-height,width,height},bounds,blockers);
+      }
+      let free=fit();
+      if (expanded && !free) {
+        host.style.setProperty('--panel-width',`${Math.min(panelWidth,COMPACT_PANEL_WIDTH)}px`);
+        for (const height of COMPACT_PANEL_HEIGHTS) {
+          host.style.setProperty('--panel-height',`${Math.min(placement.panelHeight,height)}px`);
+          free=fit();
+          if (free) break;
+        }
+      }
+      if (expanded && !free) { suppress(true); return; }
+      if (toast) toast.toggleAttribute('data-suppressed',!free);
+      if (free) { surfaceLeft=free.left; surfaceBottom=free.bottom; }
+    }
+    host.style.setProperty('--panel-left',`${surfaceLeft}px`);
+    // Fixed positioning uses layout viewport bottom, including when the keyboard shrinks the visual viewport.
+    host.style.setProperty('--panel-bottom',`${innerHeight-surfaceBottom}px`);
+    suppress(false);
   }
   function layoutWatch() {
     clearTimeout(layoutTimer);
@@ -356,7 +403,7 @@ function start() {
   const colorScheme=matchMedia('(prefers-color-scheme: dark)');
   colorScheme.addEventListener('change',()=>{updateChrome();schedulePlacement();});
   document.addEventListener('visibilitychange',()=>{
-    if (document.hidden) {clearTimeout(pollTimer);clearTimeout(layoutTimer);sidebarTracker.pause();return;}
+    if (document.hidden) {clearTimeout(pollTimer);clearTimeout(layoutTimer);sidebarTracker.pause();obstructions.pause();return;}
     if (Date.now()-lastRequestAt>=FOCUS_REFRESH_AGE) refresh(); else schedulePoll();
     sidebarTracker.resume();
     layoutWatch();
@@ -365,10 +412,11 @@ function start() {
   window.addEventListener('focus',focusRefresh,{passive:true});
   window.addEventListener('online',focusRefresh,{passive:true});
   window.addEventListener('resize',schedulePlacement,{passive:true});
+  document.addEventListener('fullscreenchange',schedulePlacement);
   window.visualViewport?.addEventListener('resize',schedulePlacement,{passive:true});
   window.visualViewport?.addEventListener('scroll',schedulePlacement,{passive:true});
-  window.addEventListener('pageshow',()=>{sidebarTracker.resume();schedulePoll();layoutWatch();});
-  window.addEventListener('pagehide',()=>{clearTimeout(pollTimer);clearTimeout(layoutTimer);sidebarTracker.pause();});
+  window.addEventListener('pageshow',()=>{sidebarTracker.resume();obstructions.invalidate();schedulePoll();layoutWatch();});
+  window.addEventListener('pagehide',()=>{clearTimeout(pollTimer);clearTimeout(layoutTimer);sidebarTracker.pause();obstructions.pause();});
   function updateMenus() {
     if (typeof GM_registerMenuCommand!=='function' || menuLocale===locale) return;
     if (menuIds.length && typeof GM_unregisterMenuCommand!=='function') return;

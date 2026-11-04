@@ -6,7 +6,7 @@ A small, independent userscript that displays official OpenAI service status on 
 
 ## Features
 
-- In automatic position mode, the compact launcher docks beside the left sidebar and follows it as it expands, collapses, resizes or is replaced. On narrow screens it stays in a viewport corner. Left/right positions are also available.
+- The launcher follows the left sidebar in automatic mode. Left and right corner preferences are also available. The launcher, details and notices move away from native menus, the composer and other visible controls, and temporarily hide if no clear space fits.
 - Official component groups, active incidents, scheduled maintenance and local fetch time. Incident titles and update bodies remain the original official text.
 - 13 interface languages: English, Simplified and Traditional Chinese, Spanish, Hindi, Brazilian Portuguese, Japanese, Korean, French, German, Indonesian, Arabic and Russian. Automatic page/browser detection and a persistent language selector are included.
 - Website theme detection, explicit light/dark options, Shadow DOM isolation, keyboard controls and reduced-motion support.
@@ -21,7 +21,7 @@ Install from [Greasy Fork](https://greasyfork.org/en/scripts/603564-openai-statu
 
 All status requests go to `https://status.openai.com/`, anonymously and without cookies. The current official page is parsed as inert JSON data; its scripts are never executed. The legacy JSON endpoints are a fallback and carry section-by-section verification labels. Only official `status.openai.com` incident links are clickable.
 
-This script does not read or transmit conversations, prompts, account tokens or page content. It inspects only sidebar geometry and theme/language attributes. Language/theme/position preferences are saved in userscript-manager storage; a status-notice fingerprint is saved in session storage. There are no analytics, ads, remote executable dependencies or translation services. Official incident text is not machine-translated.
+The script checks page geometry and theme and language attributes. It does not read or transmit conversations, prompts, account tokens or page text. Language/theme/position preferences are saved in userscript-manager storage; a status-notice fingerprint is saved in session storage. There are no analytics, ads, remote executable dependencies or translation services. Official incident text is not machine-translated.
 
 Official status reports aggregate availability; they cannot establish availability for an individual account, model or third-party service.
 

@@ -4,16 +4,17 @@ const MAX_ANIMATION_TIME = 5_000;
 const ATTRIBUTES = ['class', 'style', 'hidden', 'inert', 'aria-hidden', 'aria-expanded', 'data-state',
   'data-app-shell-sidebar-open', 'data-slate-sidebar-peeking'];
 
-export function visibleSidebarRect(element, viewport) {
+export function visibleSidebarRect(element, viewport, clipAncestors = true) {
   const view = element.ownerDocument.defaultView;
   const bounds = element.getBoundingClientRect();
   let left = Math.max(bounds.left, viewport.left), right = Math.min(bounds.right, viewport.right);
   let top = Math.max(bounds.top, viewport.top), bottom = Math.min(bounds.bottom, viewport.bottom);
+  if (right <= left || bottom <= top) return null;
   for (let node = element; node; node = node.parentElement) {
     const style = view.getComputedStyle(node);
     if (node.hidden || style.display === 'none' || ['hidden', 'collapse'].includes(style.visibility)
       || style.contentVisibility === 'hidden' || Number.parseFloat(style.opacity) === 0) return null;
-    if (node === element) continue;
+    if (node === element || !clipAncestors) continue;
     const paintClip = /\b(paint|strict|content)\b/.test(style.contain);
     const clipX = paintClip || ['hidden', 'clip', 'auto', 'scroll', 'overlay'].includes(style.overflowX || style.overflow);
     const clipY = paintClip || ['hidden', 'clip', 'auto', 'scroll', 'overlay'].includes(style.overflowY || style.overflow);

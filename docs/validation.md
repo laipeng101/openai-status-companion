@@ -1,8 +1,17 @@
-# Validation — 2.1.0
+# Validation
+
+## 2.1.1
+
+- `npm run check` built the userscript and passed all 78 tests. The runtime tests cover late portal insertion and removal, restoring the preferred dock, modal and full-viewport obstructions, narrow sidebar drawers and notice placement around the composer.
+- Inspected the account and usage menus in live ChatGPT. Both are portaled menus with Radix positioning wrappers. Reproduced their geometry with the production bundle and synthetic data in the Chrome preview.
+- At 2560×1271, both menus and the status button were visible without overlap. The open details panel fit beside the usage menu. The widget was hidden during a native dialog and returned to its preferred dock when the dialog closed.
+- At 390×844, the menu and launcher stayed clear and the details could use a compact scrollable panel. Opening the drawer hid the widget until the drawer closed. At 320×740, the launcher hid while the usage menu left no clear space.
+
+## 2.1.0
 
 Performed on 2026-11-03 with Node.js 24.20.0 and Chrome.
 
-## Automated checks
+### Automated checks
 
 `npm run check` rebuilds the complete userscript and runs Node/jsdom regression tests. All 75 tests passed locally. Tests cover:
 
@@ -19,7 +28,7 @@ Performed on 2026-11-03 with Node.js 24.20.0 and Chrome.
 
 The committed fixture is reduced public status data. Live API inspection found that the compatibility feed omits incident and maintenance arrays; these are explicitly unverified, not zero.
 
-## Chrome layout checks
+### Chrome layout checks
 
 - Exercised the unchanged 2.1.0 production bundle with synthetic status responses in Chrome: all 13 languages at 390×844, and all 13 in both light and dark themes at 320×740. The open panels stayed within the viewport with no horizontal content overflow.
 - Verified Arabic interface direction is RTL while the English incident title and original update body use LTR direction. The translated label and local time remain separate from the original body.
@@ -35,6 +44,6 @@ The earlier 2.0.1 sidebar investigation established these regression cases, whic
 - The local fixture labels its synthetic status responses and makes no OpenAI requests. It also supports incident, maintenance, unavailable and compatibility-data scenarios.
 - An independent review found no blocking issue in ancestor clipping, animation tracking, observer rebinding or runtime integration.
 
-## Limits
+### Limits
 
 This revision's browser rendering checks use the production bundle with synthetic transport on a local fixture; they do not claim a newly installed-manager test. Authenticated Mana-X was not exercised live. Translation review and structural tests are not native-speaker review of every language. Tests do not establish future manager-update timing, all mobile keyboards, all browsers, future site layouts, or actual service availability for an individual account.
