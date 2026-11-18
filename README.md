@@ -6,7 +6,7 @@ A small, independent userscript that displays official OpenAI service status on 
 
 ## Features
 
-- The launcher follows the left sidebar in automatic mode. Left and right corner preferences are also available. The launcher, details and notices move away from native menus, the composer and other visible controls, and temporarily hide if no clear space fits.
+- The launcher follows the left sidebar in automatic mode. Left and right corner preferences are also available. The launcher, details panel and notices avoid native menus, the composer and other visible controls. The panel adapts to available space and closes if needed, leaving the launcher available wherever it fits. The widget temporarily hides during modal dialogs.
 - See service components by group, open incidents, scheduled maintenance and when status data was last checked in your local time. Incident titles and updates appear in their original language.
 - Choose an interface language or let the script follow the page or browser language. The script saves your selection. [Supported languages](docs/languages.md)
 - Website theme detection, explicit light/dark options, Shadow DOM isolation, keyboard controls and reduced-motion support.

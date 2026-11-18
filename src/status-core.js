@@ -57,6 +57,12 @@ export function normalizeComponentCode(status) {
     return Object.hasOwn(COMPONENTS, normalized) ? normalized : 'unknown';
 }
 
+function affectedComponentStatus(item) {
+    // The React stream encodes an omitted current_status as "$undefined".
+    const current = item?.current_status;
+    return normalizeComponentCode(current && current !== '$undefined' ? current : item?.status);
+}
+
 // Locate one JSON object without evaluating the surrounding React server stream.
 export function extractBalancedObject(source, fromIndex = 0) {
     let start = fromIndex;
@@ -210,7 +216,7 @@ export function safeStatusUrl(value) {
 function impactFromAffected(items) {
     const affected = Array.isArray(items) ? items : [];
     const worst = affected.reduce((level, item) => {
-        const status = normalizeComponentCode(item?.current_status || item?.status);
+        const status = affectedComponentStatus(item);
         if (status === 'under_maintenance') return level;
         return Math.max(level, getComponentStatus(status).level);
     }, 0);
@@ -271,7 +277,7 @@ export function deriveOverallIndicator(components, incidents = [], maintenances 
 export function normalizeOfficialSummary(summary) {
     validateOfficialSummary(summary);
     const affected = new Map(summary.affected_components.filter(Boolean).map(item => [
-        item.component_id, normalizeComponentCode(item.current_status || item.status)
+        item.component_id, affectedComponentStatus(item)
     ]));
     const hiddenIds = hiddenComponentIds(summary.structure);
     const components = uniqueComponents(summary.components.filter(item => !hiddenIds.has(item.id)), item =>

@@ -61,9 +61,10 @@ export function createObstructionTracker(document, host, sidebarSelectors, onCha
     const regions = [];
     const visible = new Map();
     for (const node of candidates) {
+      if (node.localName === 'dialog' && node.matches(':modal')) return {regions:[], modal:true};
       const rect = visibleSidebarRect(node,viewport,!node.matches(OVERLAYS));
       if (!rect) continue;
-      if (node.getAttribute('aria-modal') === 'true' || node.matches('dialog[open]')) return {regions:[], modal:true};
+      if (node.getAttribute('aria-modal') === 'true') return {regions:[], modal:true};
       visible.set(node,rect);
       let ancestor = node.parentElement;
       while (ancestor) {

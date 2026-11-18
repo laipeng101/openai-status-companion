@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ADAPTERS, adapterFor, chooseSidebar, calculatePlacement } from '../src/layout.js';
+import { ADAPTERS, adapterFor, chooseSidebar, calculatePlacement, findClearPosition } from '../src/layout.js';
 
 const rect = (width, extra = {}) => ({ left: 0, right: width, width, height: 800, visible: true, ...extra });
 
@@ -74,5 +74,19 @@ test('notched phone safe areas keep launcher and panel clear of cutouts and home
     assert.ok(390 - landscape.panelBottom - landscape.panelHeight >= 14);
     const portrait = calculatePlacement({ width: 390, height: 844, launcherWidth: 160, launcherHeight: 36, safeBottom: 34 });
     assert.equal(portrait.top + 36, 844 - 34);
-    assert.equal(portrait.panelBottom, 34 + 36 + 9);
+    assert.equal(portrait.panelBottom, 34 + 36 + 10);
+});
+
+test('a dense layout keeps the panel usable when the search for a larger rectangle hits its limit', () => {
+    const obstacles = [
+        [0,0,340,850], [838,724,999,850], [874,146,1010,341], [770,7,955,135], [788,540,920,669],
+        [355,280,401,329], [439,4,509,174], [657,711,770,772], [517,584,583,739], [700,420,886,457],
+        [501,726,650,846], [392,405,532,575], [1156,374,1280,528], [417,171,624,280], [999,651,1054,703],
+        [593,663,766.640625,701],
+    ].map(([left,top,right,bottom]) => ({left,top,right,bottom}));
+    const bounds = {left:14,top:14,right:1266,bottom:836};
+    const fit = findClearPosition({left:593,top:-27,width:392,height:680},bounds,obstacles,{
+        minWidth:260,minHeight:120,
+    });
+    assert.deepEqual(fit,{left:593,top:290,right:853,bottom:410,width:260,height:120});
 });

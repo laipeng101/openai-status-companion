@@ -5,6 +5,8 @@ export const ADAPTERS = {
     '[data-testid="stage-slideover-sidebar"]', '[data-testid="stage-slidover-sidebar"]',
     '[data-testid="stage-sidebar-tiny-bar"]', '[data-testid="sidebar"]'],
 };
+export const CLEARANCE = 10;
+
 export function adapterFor(hostname) {
   return hostname === 'chatgpt.com' ? 'chatgpt' : 'leopard';
 }
@@ -25,38 +27,47 @@ export function calculatePlacement({width, height, offsetLeft=0, offsetTop=0, si
   const panelLeft = Math.max(leftGap, Math.min(left, width - rightGap - panelWidth));
   return {left:offsetLeft + left, top:offsetTop + Math.max(topGap, height - bottomGap - launcherHeight),
     panelLeft:offsetLeft + panelLeft, panelTop:offsetTop + topGap, panelWidth,
-    panelBottom:bottomGap + launcherHeight + 9, panelHeight:Math.max(40, Math.min(680, height - topGap - bottomGap - launcherHeight - 9))};
+    panelBottom:bottomGap + launcherHeight + CLEARANCE,
+    panelHeight:Math.max(40, Math.min(680, height - topGap - bottomGap - launcherHeight - CLEARANCE))};
 }
 
-// Prefer a nearby free space. A bounded search deliberately gives up and lets the
-// caller hide the widget rather than accepting any overlap with the original UI.
-export const CLEARANCE = 10;
 const MAX_CANDIDATES = 96;
-export function findClearPosition(preferred, bounds, obstacles, clearance = CLEARANCE) {
-  const {width, height} = preferred;
-  if (width <= 0 || height <= 0 || width > bounds.right-bounds.left || height > bounds.bottom-bounds.top) return null;
+export function findClearPosition(preferred, bounds, obstacles, {
+  minWidth = preferred.width, minHeight = preferred.height,
+} = {}) {
+  const preferredBottom = preferred.top+preferred.height;
   const queue = [], seen = new Set();
-  function add(left, top) {
-    left = Math.max(bounds.left, Math.min(left, bounds.right-width));
-    top = Math.max(bounds.top, Math.min(top, bounds.bottom-height));
-    const key = `${left}:${top}`;
+  function add(region) {
+    const width = Math.min(preferred.width, region.right-region.left);
+    const height = Math.min(preferred.height, region.bottom-region.top);
+    if (width <= 0 || height <= 0 || width < minWidth || height < minHeight) return;
+    const key = `${region.left}:${region.right}:${region.top}:${region.bottom}`;
     if (seen.has(key)) return;
     seen.add(key);
-    queue.push({left, top, right:left+width, bottom:top+height, width, height,
-      distance:Math.abs(left-preferred.left)+2*Math.abs(top-preferred.top)});
+    const left = Math.max(region.left, Math.min(preferred.left, region.right-width));
+    const top = Math.max(region.top, Math.min(preferredBottom-height, region.bottom-height));
+    const rect = {left, top, right:left+width, bottom:top+height, width, height};
+    queue.push({region, rect, area:width*height,
+      distance:Math.abs(left-preferred.left)+2*Math.abs(rect.bottom-preferredBottom)});
   }
-  add(preferred.left, preferred.top);
+  add(bounds);
   for (let attempt = 0; queue.length && attempt < MAX_CANDIDATES; attempt += 1) {
-    queue.sort((a,b) => a.distance-b.distance);
-    const candidate = queue.shift();
-    const collision = obstacles.find(rect => candidate.left < rect.right+clearance
-      && candidate.right > rect.left-clearance && candidate.top < rect.bottom+clearance
-      && candidate.bottom > rect.top-clearance);
-    if (!collision) return candidate;
-    add(collision.right+clearance, candidate.top);
-    add(collision.left-clearance-width, candidate.top);
-    add(candidate.left, collision.top-clearance-height);
-    add(candidate.left, collision.bottom+clearance);
+    queue.sort((a,b) => b.area-a.area || a.distance-b.distance);
+    const {region, rect} = queue.shift();
+    const collision = obstacles.find(obstacle => rect.left < obstacle.right+CLEARANCE
+      && rect.right > obstacle.left-CLEARANCE && rect.top < obstacle.bottom+CLEARANCE
+      && rect.bottom > obstacle.top-CLEARANCE);
+    if (!collision) return rect;
+    // Any clear rectangle must fit entirely to one side of this obstruction.
+    add({...region, right:collision.left-CLEARANCE});
+    add({...region, left:collision.right+CLEARANCE});
+    add({...region, bottom:collision.top-CLEARANCE});
+    add({...region, top:collision.bottom+CLEARANCE});
+  }
+  if (queue.length && (minWidth < preferred.width || minHeight < preferred.height)) {
+    // A dense layout can exhaust the size search while a smaller panel still fits.
+    return findClearPosition({left:preferred.left, top:preferredBottom-minHeight,
+      width:minWidth, height:minHeight},bounds,obstacles);
   }
   return null;
 }

@@ -14,8 +14,8 @@ const REFRESH_INTERVAL = 60_000;
 const MIN_REQUEST_GAP = 15_000;
 const FOCUS_REFRESH_AGE = 45_000;
 const DISCOVERY_INTERVAL = 2_000;
-const COMPACT_PANEL_WIDTH = 260;
-const COMPACT_PANEL_HEIGHTS = [200, 120];
+const MIN_PANEL_WIDTH = 260;
+const MIN_PANEL_HEIGHT = 120;
 if (!document.getElementById(HOST_ID)) start();
 
 function start() {
@@ -121,10 +121,13 @@ function start() {
   function errorText() {
     return t(hasMessage(error?.code) ? error.code : 'unknownError', {status:error?.status});
   }
-  function setExpanded(next) {
-    expanded = Boolean(next);
+  function updateExpanded(next) {
+    expanded = next;
     panel.hidden = !expanded;
     launcher.setAttribute('aria-expanded', String(expanded));
+  }
+  function setExpanded(next) {
+    updateExpanded(next);
     shadow.querySelector('.toast')?.remove();
     if (expanded) renderContent();
     place();
@@ -331,11 +334,31 @@ function start() {
     host.toggleAttribute('data-suppressed',suppressed);
     host.toggleAttribute('inert',suppressed);
   }
+  function fitPanel(preferred, bounds, blockers) {
+    const {width,height}=preferred;
+    const free=findClearPosition(preferred,bounds,blockers,{
+      minWidth:Math.min(width,MIN_PANEL_WIDTH), minHeight:Math.min(height,MIN_PANEL_HEIGHT),
+    });
+    if (!free || free.width >= width) return free;
+
+    host.style.setProperty('--panel-width',`${free.width}px`);
+    const narrowedHeight=panel.getBoundingClientRect().height;
+    if (narrowedHeight <= height) return free;
+    // Wrapping at the fitted width can need more vertical space than the initial measurement.
+    const column={...bounds,left:free.left,right:free.right};
+    return findClearPosition({left:free.left,top:preferred.top+height-narrowedHeight,
+      width:free.width,height:narrowedHeight},column,blockers,{minHeight:free.height}) || free;
+  }
   function place() {
     if (!host.isConnected) document.documentElement.append(host);
     if (document.fullscreenElement) { suppress(true); return; }
+    const root=document.documentElement;
+    const pageZoom=Number(getComputedStyle(root).zoom);
+    // The coordinates below are viewport CSS pixels. Cancel the page's CSS zoom on the host.
+    host.style.zoom=pageZoom > 0 && pageZoom !== 1 ? String(1/pageZoom) : '';
+    const {clientWidth,clientHeight}=root;
     const viewport=window.visualViewport;
-    const width=viewport?.width || innerWidth, height=viewport?.height || innerHeight;
+    const width=viewport?.width || clientWidth, height=viewport?.height || clientHeight;
     const offsetLeft=viewport?.offsetLeft || 0, offsetTop=viewport?.offsetTop || 0;
     const clip={left:offsetLeft,right:offsetLeft+width,top:offsetTop,bottom:offsetTop+height};
     const {regions,modal}=obstructions.read(clip);
@@ -364,27 +387,26 @@ function start() {
     const surface=expanded ? panel : toast;
     let surfaceLeft=Math.min(dock.left,bounds.right-panelWidth), surfaceBottom=dock.top-CLEARANCE;
     if (surface) {
+      const {width,height}=surface.getBoundingClientRect();
+      const preferred={left:surfaceLeft,top:surfaceBottom-height,width,height};
       const blockers=[...regions,dock];
-      function fit() {
-        const {width,height}=surface.getBoundingClientRect();
-        return findClearPosition({left:surfaceLeft,top:surfaceBottom-height,width,height},bounds,blockers);
-      }
-      let free=fit();
+      const free=expanded ? fitPanel(preferred,bounds,blockers) : findClearPosition(preferred,bounds,blockers);
       if (expanded && !free) {
-        host.style.setProperty('--panel-width',`${Math.min(panelWidth,COMPACT_PANEL_WIDTH)}px`);
-        for (const height of COMPACT_PANEL_HEIGHTS) {
-          host.style.setProperty('--panel-height',`${Math.min(placement.panelHeight,height)}px`);
-          free=fit();
-          if (free) break;
+        if (panel.contains(shadow.activeElement)) launcher.focus({preventScroll:true});
+        updateExpanded(false);
+      }
+      if (toast) toast.toggleAttribute('data-suppressed',!free);
+      if (free) {
+        surfaceLeft=free.left; surfaceBottom=free.bottom;
+        if (expanded) {
+          host.style.setProperty('--panel-width',`${free.width}px`);
+          host.style.setProperty('--panel-height',`${free.height}px`);
         }
       }
-      if (expanded && !free) { suppress(true); return; }
-      if (toast) toast.toggleAttribute('data-suppressed',!free);
-      if (free) { surfaceLeft=free.left; surfaceBottom=free.bottom; }
     }
     host.style.setProperty('--panel-left',`${surfaceLeft}px`);
-    // Fixed positioning uses layout viewport bottom, including when the keyboard shrinks the visual viewport.
-    host.style.setProperty('--panel-bottom',`${innerHeight-surfaceBottom}px`);
+    // CSS fixed positioning uses the layout viewport excluding scrollbars.
+    host.style.setProperty('--panel-bottom',`${clientHeight-surfaceBottom}px`);
     suppress(false);
   }
   function layoutWatch() {

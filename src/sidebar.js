@@ -3,6 +3,18 @@ const SETTLE_TIME = 200;
 const MAX_ANIMATION_TIME = 5_000;
 const ATTRIBUTES = ['class', 'style', 'hidden', 'inert', 'aria-hidden', 'aria-expanded', 'data-state',
   'data-app-shell-sidebar-open', 'data-slate-sidebar-peeking'];
+const FIXED_CONTAINING_BLOCK_PROPERTIES = [
+  'transform', 'translate', 'rotate', 'scale', 'perspective', 'filter', 'backdrop-filter',
+];
+
+function establishesFixedContainingBlock(style, paintClip) {
+  return style.display !== 'contents' && (paintClip || /\blayout\b/.test(style.contain)
+    || FIXED_CONTAINING_BLOCK_PROPERTIES.some(property => {
+      const value = style.getPropertyValue(property);
+      return value && value !== 'none';
+    }) || style.willChange.split(/\s*,\s*/).some(property => FIXED_CONTAINING_BLOCK_PROPERTIES.includes(property)
+      || property === 'contain' || property === 'content-visibility'));
+}
 
 export function visibleSidebarRect(element, viewport, clipAncestors = true) {
   const view = element.ownerDocument.defaultView;
@@ -10,12 +22,17 @@ export function visibleSidebarRect(element, viewport, clipAncestors = true) {
   let left = Math.max(bounds.left, viewport.left), right = Math.min(bounds.right, viewport.right);
   let top = Math.max(bounds.top, viewport.top), bottom = Math.min(bounds.bottom, viewport.bottom);
   if (right <= left || bottom <= top) return null;
+  let needsFixedContainingBlock = false;
   for (let node = element; node; node = node.parentElement) {
     const style = view.getComputedStyle(node);
     if (node.hidden || style.display === 'none' || ['hidden', 'collapse'].includes(style.visibility)
       || style.contentVisibility === 'hidden' || Number.parseFloat(style.opacity) === 0) return null;
-    if (node === element || !clipAncestors) continue;
-    const paintClip = /\b(paint|strict|content)\b/.test(style.contain);
+    if (!clipAncestors) continue;
+    const paintClip = /\b(paint|strict|content)\b/.test(style.contain) || style.contentVisibility === 'auto';
+    // A fixed element escapes overflow clipping up to its containing block, or to the viewport.
+    if (needsFixedContainingBlock && !establishesFixedContainingBlock(style, paintClip)) continue;
+    needsFixedContainingBlock = style.position === 'fixed';
+    if (node === element || style.display === 'contents') continue;
     const clipX = paintClip || ['hidden', 'clip', 'auto', 'scroll', 'overlay'].includes(style.overflowX || style.overflow);
     const clipY = paintClip || ['hidden', 'clip', 'auto', 'scroll', 'overlay'].includes(style.overflowY || style.overflow);
     if (!clipX && !clipY) continue;

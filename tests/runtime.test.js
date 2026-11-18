@@ -17,8 +17,8 @@ const successful = (summary = official()) => ({ status: 200, responseText: asRsc
 const nextTurn = () => new Promise((resolve) => setImmediate(resolve));
 
 function environment(t, { url = 'https://chatgpt.com/', lang = 'en', theme = 'light',
-    preferences = {}, sidebarWidth = 340, width = 1280, height = 800,
-    response = () => successful(), brokenStorage = false, clipWidth = null } = {}) {
+    preferences = {}, sidebarWidth = 340, width = 1280, height = 800, layoutHeight = height,
+    response = () => successful(), brokenStorage = false, clipWidth = null, panelContentHeight = 300 } = {}) {
     let responder = response;
     const requests = [], menus = [], activeMenus = new Map(), saved = new Map([[SETTINGS_KEY, structuredClone(preferences)]]);
     const sidebarId = new URL(url).hostname === 'chatgpt.com' ? 'app-shell-sidebar' : 'stage-slideover-sidebar';
@@ -27,6 +27,7 @@ function environment(t, { url = 'https://chatgpt.com/', lang = 'en', theme = 'li
     });
     const window = dom.window;
     Object.defineProperties(window, { innerWidth: { configurable: true, value: width }, innerHeight: { configurable: true, value: height } });
+    Object.defineProperties(window.document.documentElement, { clientWidth: { value: width }, clientHeight: { value: layoutHeight } });
     Object.defineProperty(window.navigator, 'languages', { configurable: true, value: ['en-US', 'zh-CN'] });
     window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
     window.ResizeObserver = class { observe() {} disconnect() {} };
@@ -41,10 +42,11 @@ function environment(t, { url = 'https://chatgpt.com/', lang = 'en', theme = 'li
             : this.classList.contains('launcher') ? [parseFloat(host.style.left) || 0, parseFloat(host.style.top) || 0, 180, 38]
             : this.classList.contains('panel') || this.classList.contains('toast') ? (() => {
                 const surfaceWidth = parseFloat(host.style.getPropertyValue('--panel-width'));
-                const surfaceHeight = Math.min(this.classList.contains('panel') ? 300 : 60,
+                const contentHeight = typeof panelContentHeight === 'function' ? panelContentHeight(surfaceWidth) : panelContentHeight;
+                const surfaceHeight = Math.min(this.classList.contains('panel') ? contentHeight : 60,
                     parseFloat(host.style.getPropertyValue('--panel-height')));
                 return [parseFloat(host.style.getPropertyValue('--panel-left')),
-                    height - parseFloat(host.style.getPropertyValue('--panel-bottom')) - surfaceHeight,
+                    layoutHeight - parseFloat(host.style.getPropertyValue('--panel-bottom')) - surfaceHeight,
                     surfaceWidth, surfaceHeight];
             })() : [0, 0, 0, 0]);
         const [x, y, rectWidth, rectHeight] = dimensions;
@@ -313,6 +315,118 @@ function assertClear(surface, obstacle) {
     assert.ok(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom,
         `surface ${a.left},${a.top} intersects native UI ${b.left},${b.top}`);
 }
+
+test('desktop panel keeps its height when the composer leaves slightly less than its preferred width', async (t) => {
+    const app = environment(t, { width:1908, height:846, panelContentHeight:640 });
+    const { document } = app.window;
+    const composer = document.createElement('form');
+    app.boxes.set(composer,[740,396,770,60]);
+    document.querySelector('main').append(composer);
+    await app.settle(); app.open();
+
+    const panel = app.shadow.querySelector('.panel');
+    const initial = panel.getBoundingClientRect();
+    assert.equal(app.host.hasAttribute('inert'),false);
+    assert.ok(initial.width >= 370 && initial.width < 392);
+    assert.equal(initial.height,640);
+    assertClear(panel,composer);
+    assertClear(panel,document.getElementById('sidebar-clip'));
+    assertClear(panel,app.shadow.querySelector('.launcher'));
+
+    composer.remove();
+    await app.settle(); await app.frame();
+    const restored = panel.getBoundingClientRect();
+    assert.equal(restored.width,392);
+    assert.equal(restored.height,640);
+    assert.equal(restored.left,354);
+});
+
+test('desktop panel keeps its width when native controls limit its height', async (t) => {
+    const app = environment(t, { panelContentHeight:640 });
+    const { document } = app.window;
+    const controls = document.createElement('form');
+    app.boxes.set(controls,[340,390,940,100]);
+    document.querySelector('main').append(controls);
+    await app.settle(); app.open();
+
+    const panel = app.shadow.querySelector('.panel');
+    assert.equal(app.host.hasAttribute('inert'),false);
+    assert.equal(panel.getBoundingClientRect().width,392);
+    assert.equal(panel.getBoundingClientRect().height,366);
+    assertClear(panel,controls);
+    assertClear(panel,app.shadow.querySelector('.launcher'));
+});
+
+test('a narrower panel accounts for the extra height of wrapped content', async (t) => {
+    const app = environment(t, { height:850, panelContentHeight:width => width < 392 ? 573 : 522 });
+    const { document } = app.window;
+    const composer = document.createElement('form');
+    app.boxes.set(composer,[660,385,420,140]);
+    document.querySelector('main').append(composer);
+    await app.settle(); app.open();
+
+    const panel = app.shadow.querySelector('.panel');
+    assert.equal(panel.getBoundingClientRect().width,300);
+    assert.equal(panel.getBoundingClientRect().height,573);
+    assertClear(panel,composer);
+    assertClear(panel,app.shadow.querySelector('.launcher'));
+});
+
+test('with a horizontal scrollbar the fixed panel stays below a protected control', async (t) => {
+    const app = environment(t, { width:900, height:480, layoutHeight:465, sidebarWidth:0 });
+    const { document } = app.window;
+    const controls = document.createElement('form');
+    app.boxes.set(controls,[0,0,900,180]);
+    document.querySelector('main').append(controls);
+    await app.settle(); app.open();
+
+    const panel = app.shadow.querySelector('.panel');
+    assert.equal(panel.hidden,false);
+    const rect = panel.getBoundingClientRect();
+    assert.ok(rect.top >= 190);
+    assert.ok(rect.bottom <= 465);
+});
+
+test('when a short view cannot fit details the launcher stays available and receives focus', async (t) => {
+    const app = environment(t, { width:640, height:240, clipWidth:52 });
+    const { document } = app.window;
+    await app.settle(); app.open();
+    const launcher = app.shadow.querySelector('.launcher'), panel = app.shadow.querySelector('.panel');
+    assert.equal(app.shadow.activeElement,panel);
+
+    const controls = document.createElement('form');
+    app.boxes.set(controls,[52,0,588,170]);
+    document.querySelector('main').append(controls);
+    await app.settle(); await app.frame();
+    assert.equal(app.host.hasAttribute('inert'),false);
+    assert.equal(panel.hidden,true);
+    assert.equal(launcher.getAttribute('aria-expanded'),'false');
+    assert.equal(app.shadow.activeElement,launcher);
+    assertClear(launcher,controls);
+
+    controls.remove();
+    await app.settle(); await app.frame();
+    app.open();
+    assert.equal(panel.hidden,false);
+    assert.equal(app.shadow.activeElement,panel);
+});
+
+test('a nonmodal native dialog only protects the space that it occupies', async (t) => {
+    const app = environment(t, { clipWidth:52 });
+    const { document } = app.window;
+    await app.settle(); app.open();
+    const dialog = document.createElement('dialog');
+    app.boxes.set(dialog,[240,385,380,360]);
+    dialog.open = true;
+    document.body.append(dialog);
+    await app.settle(); await app.frame();
+
+    const panel = app.shadow.querySelector('.panel');
+    assert.equal(app.host.hasAttribute('inert'),false);
+    assert.equal(panel.hidden,false);
+    assertClear(panel,dialog);
+    assertClear(app.shadow.querySelector('.launcher'),dialog);
+});
 
 test('late account and usage portals move the launcher and open panel by the next frame, then restore docking', async (t) => {
     const app = environment(t, { clipWidth:52 });

@@ -13,7 +13,7 @@
 // @name:ar      مساعد حالة OpenAI
 // @name:ru      Статус OpenAI
 // @namespace    https://github.com/laipeng101/openai-status-companion
-// @version      2.1.2
+// @version      2.1.3
 // @description  Check OpenAI service status, incidents and scheduled maintenance on ChatGPT, Leopard-X and Mana-X. Choose from 13 interface languages and set the theme and button position.
 // @description:zh-CN 在 ChatGPT、Leopard-X 和 Mana-X 查看 OpenAI 服务状态、异常和计划维护。支持 13 种界面语言，可设置主题和按钮位置。
 // @description:zh-TW 在 ChatGPT、Leopard-X 和 Mana-X 查看 OpenAI 服務狀態、異常及預定維護。支援 13 種介面語言，可設定主題和按鈕位置。
@@ -94,6 +94,10 @@
   function normalizeComponentCode(status) {
     const normalized = code(status);
     return Object.hasOwn(COMPONENTS, normalized) ? normalized : "unknown";
+  }
+  function affectedComponentStatus(item) {
+    const current = item?.current_status;
+    return normalizeComponentCode(current && current !== "$undefined" ? current : item?.status);
   }
   function extractBalancedObject(source, fromIndex = 0) {
     let start2 = fromIndex;
@@ -230,7 +234,7 @@
   function impactFromAffected(items) {
     const affected = Array.isArray(items) ? items : [];
     const worst = affected.reduce((level, item) => {
-      const status = normalizeComponentCode(item?.current_status || item?.status);
+      const status = affectedComponentStatus(item);
       if (status === "under_maintenance") return level;
       return Math.max(level, getComponentStatus(status).level);
     }, 0);
@@ -286,7 +290,7 @@
     validateOfficialSummary(summary);
     const affected = new Map(summary.affected_components.filter(Boolean).map((item) => [
       item.component_id,
-      normalizeComponentCode(item.current_status || item.status)
+      affectedComponentStatus(item)
     ]));
     const hiddenIds = hiddenComponentIds(summary.structure);
     const components = uniqueComponents(summary.components.filter((item) => !hiddenIds.has(item.id)), (item) => affected.get(item.id) || (item.status ? normalizeComponentCode(item.status) : "operational"));
@@ -2570,6 +2574,7 @@
       '[data-testid="sidebar"]'
     ]
   };
+  var CLEARANCE = 10;
   function adapterFor(hostname) {
     return hostname === "chatgpt.com" ? "chatgpt" : "leopard";
   }
@@ -2603,42 +2608,52 @@
       panelLeft: offsetLeft + panelLeft,
       panelTop: offsetTop + topGap,
       panelWidth,
-      panelBottom: bottomGap + launcherHeight + 9,
-      panelHeight: Math.max(40, Math.min(680, height - topGap - bottomGap - launcherHeight - 9))
+      panelBottom: bottomGap + launcherHeight + CLEARANCE,
+      panelHeight: Math.max(40, Math.min(680, height - topGap - bottomGap - launcherHeight - CLEARANCE))
     };
   }
-  var CLEARANCE = 10;
   var MAX_CANDIDATES = 96;
-  function findClearPosition(preferred, bounds, obstacles, clearance = CLEARANCE) {
-    const { width, height } = preferred;
-    if (width <= 0 || height <= 0 || width > bounds.right - bounds.left || height > bounds.bottom - bounds.top) return null;
+  function findClearPosition(preferred, bounds, obstacles, {
+    minWidth = preferred.width,
+    minHeight = preferred.height
+  } = {}) {
+    const preferredBottom = preferred.top + preferred.height;
     const queue = [], seen = /* @__PURE__ */ new Set();
-    function add(left, top) {
-      left = Math.max(bounds.left, Math.min(left, bounds.right - width));
-      top = Math.max(bounds.top, Math.min(top, bounds.bottom - height));
-      const key = `${left}:${top}`;
+    function add(region) {
+      const width = Math.min(preferred.width, region.right - region.left);
+      const height = Math.min(preferred.height, region.bottom - region.top);
+      if (width <= 0 || height <= 0 || width < minWidth || height < minHeight) return;
+      const key = `${region.left}:${region.right}:${region.top}:${region.bottom}`;
       if (seen.has(key)) return;
       seen.add(key);
+      const left = Math.max(region.left, Math.min(preferred.left, region.right - width));
+      const top = Math.max(region.top, Math.min(preferredBottom - height, region.bottom - height));
+      const rect = { left, top, right: left + width, bottom: top + height, width, height };
       queue.push({
-        left,
-        top,
-        right: left + width,
-        bottom: top + height,
-        width,
-        height,
-        distance: Math.abs(left - preferred.left) + 2 * Math.abs(top - preferred.top)
+        region,
+        rect,
+        area: width * height,
+        distance: Math.abs(left - preferred.left) + 2 * Math.abs(rect.bottom - preferredBottom)
       });
     }
-    add(preferred.left, preferred.top);
+    add(bounds);
     for (let attempt = 0; queue.length && attempt < MAX_CANDIDATES; attempt += 1) {
-      queue.sort((a, b) => a.distance - b.distance);
-      const candidate = queue.shift();
-      const collision = obstacles.find((rect) => candidate.left < rect.right + clearance && candidate.right > rect.left - clearance && candidate.top < rect.bottom + clearance && candidate.bottom > rect.top - clearance);
-      if (!collision) return candidate;
-      add(collision.right + clearance, candidate.top);
-      add(collision.left - clearance - width, candidate.top);
-      add(candidate.left, collision.top - clearance - height);
-      add(candidate.left, collision.bottom + clearance);
+      queue.sort((a, b) => b.area - a.area || a.distance - b.distance);
+      const { region, rect } = queue.shift();
+      const collision = obstacles.find((obstacle) => rect.left < obstacle.right + CLEARANCE && rect.right > obstacle.left - CLEARANCE && rect.top < obstacle.bottom + CLEARANCE && rect.bottom > obstacle.top - CLEARANCE);
+      if (!collision) return rect;
+      add({ ...region, right: collision.left - CLEARANCE });
+      add({ ...region, left: collision.right + CLEARANCE });
+      add({ ...region, bottom: collision.top - CLEARANCE });
+      add({ ...region, top: collision.bottom + CLEARANCE });
+    }
+    if (queue.length && (minWidth < preferred.width || minHeight < preferred.height)) {
+      return findClearPosition({
+        left: preferred.left,
+        top: preferredBottom - minHeight,
+        width: minWidth,
+        height: minHeight
+      }, bounds, obstacles);
     }
     return null;
   }
@@ -2657,17 +2672,36 @@
     "data-app-shell-sidebar-open",
     "data-slate-sidebar-peeking"
   ];
+  var FIXED_CONTAINING_BLOCK_PROPERTIES = [
+    "transform",
+    "translate",
+    "rotate",
+    "scale",
+    "perspective",
+    "filter",
+    "backdrop-filter"
+  ];
+  function establishesFixedContainingBlock(style, paintClip) {
+    return style.display !== "contents" && (paintClip || /\blayout\b/.test(style.contain) || FIXED_CONTAINING_BLOCK_PROPERTIES.some((property) => {
+      const value = style.getPropertyValue(property);
+      return value && value !== "none";
+    }) || style.willChange.split(/\s*,\s*/).some((property) => FIXED_CONTAINING_BLOCK_PROPERTIES.includes(property) || property === "contain" || property === "content-visibility"));
+  }
   function visibleSidebarRect(element, viewport, clipAncestors = true) {
     const view = element.ownerDocument.defaultView;
     const bounds = element.getBoundingClientRect();
     let left = Math.max(bounds.left, viewport.left), right = Math.min(bounds.right, viewport.right);
     let top = Math.max(bounds.top, viewport.top), bottom = Math.min(bounds.bottom, viewport.bottom);
     if (right <= left || bottom <= top) return null;
+    let needsFixedContainingBlock = false;
     for (let node = element; node; node = node.parentElement) {
       const style = view.getComputedStyle(node);
       if (node.hidden || style.display === "none" || ["hidden", "collapse"].includes(style.visibility) || style.contentVisibility === "hidden" || Number.parseFloat(style.opacity) === 0) return null;
-      if (node === element || !clipAncestors) continue;
-      const paintClip = /\b(paint|strict|content)\b/.test(style.contain);
+      if (!clipAncestors) continue;
+      const paintClip = /\b(paint|strict|content)\b/.test(style.contain) || style.contentVisibility === "auto";
+      if (needsFixedContainingBlock && !establishesFixedContainingBlock(style, paintClip)) continue;
+      needsFixedContainingBlock = style.position === "fixed";
+      if (node === element || style.display === "contents") continue;
       const clipX = paintClip || ["hidden", "clip", "auto", "scroll", "overlay"].includes(style.overflowX || style.overflow);
       const clipY = paintClip || ["hidden", "clip", "auto", "scroll", "overlay"].includes(style.overflowY || style.overflow);
       if (!clipX && !clipY) continue;
@@ -2821,9 +2855,10 @@
       const regions = [];
       const visible = /* @__PURE__ */ new Map();
       for (const node of candidates) {
+        if (node.localName === "dialog" && node.matches(":modal")) return { regions: [], modal: true };
         const rect = visibleSidebarRect(node, viewport, !node.matches(OVERLAYS));
         if (!rect) continue;
-        if (node.getAttribute("aria-modal") === "true" || node.matches("dialog[open]")) return { regions: [], modal: true };
+        if (node.getAttribute("aria-modal") === "true") return { regions: [], modal: true };
         visible.set(node, rect);
         let ancestor = node.parentElement;
         while (ancestor) {
@@ -3042,8 +3077,8 @@ select {min-height:32px; max-width:64%; padding:4px 8px; border:1px solid var(--
   var MIN_REQUEST_GAP = 15e3;
   var FOCUS_REFRESH_AGE = 45e3;
   var DISCOVERY_INTERVAL = 2e3;
-  var COMPACT_PANEL_WIDTH = 260;
-  var COMPACT_PANEL_HEIGHTS = [200, 120];
+  var MIN_PANEL_WIDTH = 260;
+  var MIN_PANEL_HEIGHT = 120;
   if (!document.getElementById(HOST_ID)) start();
   function start() {
     const settings = readSettings();
@@ -3154,10 +3189,13 @@ select {min-height:32px; max-width:64%; padding:4px 8px; border:1px solid var(--
     function errorText() {
       return t(hasMessage(error?.code) ? error.code : "unknownError", { status: error?.status });
     }
-    function setExpanded(next) {
-      expanded = Boolean(next);
+    function updateExpanded(next) {
+      expanded = next;
       panel.hidden = !expanded;
       launcher.setAttribute("aria-expanded", String(expanded));
+    }
+    function setExpanded(next) {
+      updateExpanded(next);
       shadow.querySelector(".toast")?.remove();
       if (expanded) renderContent();
       place();
@@ -3414,14 +3452,36 @@ select {min-height:32px; max-width:64%; padding:4px 8px; border:1px solid var(--
       host.toggleAttribute("data-suppressed", suppressed);
       host.toggleAttribute("inert", suppressed);
     }
+    function fitPanel(preferred, bounds, blockers) {
+      const { width, height } = preferred;
+      const free = findClearPosition(preferred, bounds, blockers, {
+        minWidth: Math.min(width, MIN_PANEL_WIDTH),
+        minHeight: Math.min(height, MIN_PANEL_HEIGHT)
+      });
+      if (!free || free.width >= width) return free;
+      host.style.setProperty("--panel-width", `${free.width}px`);
+      const narrowedHeight = panel.getBoundingClientRect().height;
+      if (narrowedHeight <= height) return free;
+      const column = { ...bounds, left: free.left, right: free.right };
+      return findClearPosition({
+        left: free.left,
+        top: preferred.top + height - narrowedHeight,
+        width: free.width,
+        height: narrowedHeight
+      }, column, blockers, { minHeight: free.height }) || free;
+    }
     function place() {
       if (!host.isConnected) document.documentElement.append(host);
       if (document.fullscreenElement) {
         suppress(true);
         return;
       }
+      const root = document.documentElement;
+      const pageZoom = Number(getComputedStyle(root).zoom);
+      host.style.zoom = pageZoom > 0 && pageZoom !== 1 ? String(1 / pageZoom) : "";
+      const { clientWidth, clientHeight } = root;
       const viewport = window.visualViewport;
-      const width = viewport?.width || innerWidth, height = viewport?.height || innerHeight;
+      const width = viewport?.width || clientWidth, height = viewport?.height || clientHeight;
       const offsetLeft = viewport?.offsetLeft || 0, offsetTop = viewport?.offsetTop || 0;
       const clip = { left: offsetLeft, right: offsetLeft + width, top: offsetTop, bottom: offsetTop + height };
       const { regions, modal } = obstructions.read(clip);
@@ -3472,32 +3532,26 @@ select {min-height:32px; max-width:64%; padding:4px 8px; border:1px solid var(--
       const surface = expanded ? panel : toast;
       let surfaceLeft = Math.min(dock.left, bounds.right - panelWidth), surfaceBottom = dock.top - CLEARANCE;
       if (surface) {
-        let fit = function() {
-          const { width: width2, height: height2 } = surface.getBoundingClientRect();
-          return findClearPosition({ left: surfaceLeft, top: surfaceBottom - height2, width: width2, height: height2 }, bounds, blockers);
-        };
+        const { width: width2, height: height2 } = surface.getBoundingClientRect();
+        const preferred = { left: surfaceLeft, top: surfaceBottom - height2, width: width2, height: height2 };
         const blockers = [...regions, dock];
-        let free = fit();
+        const free = expanded ? fitPanel(preferred, bounds, blockers) : findClearPosition(preferred, bounds, blockers);
         if (expanded && !free) {
-          host.style.setProperty("--panel-width", `${Math.min(panelWidth, COMPACT_PANEL_WIDTH)}px`);
-          for (const height2 of COMPACT_PANEL_HEIGHTS) {
-            host.style.setProperty("--panel-height", `${Math.min(placement.panelHeight, height2)}px`);
-            free = fit();
-            if (free) break;
-          }
-        }
-        if (expanded && !free) {
-          suppress(true);
-          return;
+          if (panel.contains(shadow.activeElement)) launcher.focus({ preventScroll: true });
+          updateExpanded(false);
         }
         if (toast) toast.toggleAttribute("data-suppressed", !free);
         if (free) {
           surfaceLeft = free.left;
           surfaceBottom = free.bottom;
+          if (expanded) {
+            host.style.setProperty("--panel-width", `${free.width}px`);
+            host.style.setProperty("--panel-height", `${free.height}px`);
+          }
         }
       }
       host.style.setProperty("--panel-left", `${surfaceLeft}px`);
-      host.style.setProperty("--panel-bottom", `${innerHeight - surfaceBottom}px`);
+      host.style.setProperty("--panel-bottom", `${clientHeight - surfaceBottom}px`);
       suppress(false);
     }
     function layoutWatch() {

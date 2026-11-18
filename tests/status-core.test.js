@@ -70,6 +70,15 @@ test('official affected-component list overrides operational default', () => {
     assert.equal(result.status.indicator, 'major');
 });
 
+test('official affected status falls back to status when the React stream omits current_status', () => {
+    const summary = official({ affected_components: [
+        { component_id: 'a', current_status: '$undefined', status: 'degraded_performance' }
+    ] });
+    const result = normalizeOfficialSummary(parseOfficialPage(asRsc(summary)));
+    assert.equal(result.components[0].status, 'degraded_performance');
+    assert.equal(result.status.indicator, 'minor');
+});
+
 test('unknown affected status remains unknown instead of healthy', () => {
     const result = normalizeOfficialSummary(official({
         affected_components: [{ component_id: 'a', current_status: 'new_vendor_status' }]

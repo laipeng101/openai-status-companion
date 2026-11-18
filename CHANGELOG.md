@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.3 — 2026-11-18
+
+- Size the details panel to the available space and remeasure its height when the width changes. Keep the status button available when only the details panel cannot fit.
+- Correct positioning with scrollbars, fixed composers, page CSS zoom and pinch zoom. Avoid non-modal dialogs where possible and temporarily hide the widget during modal dialogs.
+- Use the incident's component status when the official feed leaves its `current_status` field unset.
+
 ## 2.1.2 — 2026-11-05
 
 - Revise interface text, script descriptions and installation instructions across all 13 languages. Clarify service incidents, cached data and sections that could not be verified when using the legacy status API.

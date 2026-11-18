@@ -117,6 +117,19 @@ test('paint containment clips descendants while layout containment alone does no
     assert.equal(visibleSidebarRect(app.sidebar, VIEWPORT).right, 340);
 });
 
+test('fixed elements escape overflow clipping up to their containing block', (t) => {
+    const app = page(t);
+    app.outer.style.overflowX = 'hidden';
+    app.parent.style.overflowX = 'hidden';
+    app.sidebar.style.position = 'fixed';
+    app.rects.set('outer', box(0, 0, 280, 800));
+    app.rects.set('parent', box(0, 0, 100, 800));
+    assert.equal(visibleSidebarRect(app.sidebar, VIEWPORT).right, 340, 'viewport containing block');
+
+    app.outer.style.transform = 'translateX(0px)';
+    assert.equal(visibleSidebarRect(app.sidebar, VIEWPORT).right, 280, 'ancestor containing block');
+});
+
 test('ancestor attribute changes schedule immediate tracking without observing streamed conversation descendants', async (t) => {
     const app = trackerPage(t, '<div id="outer"><div id="parent"><div id="sidebar"><div id="history"><span id="text">old</span></div></div></div><main><div id="conversation"></div></main>');
     let layouts = 0;
